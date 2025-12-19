@@ -9,7 +9,7 @@ struct Album {
   std::string name;
   std::string artist;
   std::string genre;
-  std::vector<Song> tracks; // This needs to be initialized!
+  std::vector<Song> tracks;
   double price;
   double quality;
   double hype;

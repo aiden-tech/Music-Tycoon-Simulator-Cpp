@@ -1,6 +1,7 @@
 #pragma once
 
 #include "album.h"
+#include "gamestate.h"
 #include "player.h"
 #include "song.h"
 
@@ -28,5 +29,7 @@ void DrawAnalyticsWindow(const std::vector<Song> &songsReleased,
 
 void DrawUpgradeWindow(const char *title, Player &player,
                        std::vector<std::pair<std::string, double>> &items);
+
+void DrawMainMenu(GameState &state, Player &player);
 
 extern EventLog gameLog; // Global instance

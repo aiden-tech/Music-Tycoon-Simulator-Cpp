@@ -2,8 +2,6 @@
 
 #include <string>
 
-// --- HELPER FUNCTIONS ---
-
 // --- MODERN RANDOM ENGINE ---
 namespace Random {
 
@@ -15,7 +13,7 @@ int Int(int min, int max);
 bool Chance(double probability01);
 } // namespace Random
 
-std::string BeginDropDownMenu(bool IsOpen);
+// --- HELPER FUNCTIONS ---
 
 std::string GenerateSongName();
 

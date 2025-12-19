@@ -317,3 +317,35 @@ void DrawUpgradeWindow(const char *title, Player &player,
   }
   ImGui::End();
 }
+
+void DrawMainMenu(GameState &state, Player &player) {
+  // Center the window
+  ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f,
+                                 ImGui::GetIO().DisplaySize.y * 0.5f),
+                          ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+  ImGui::SetNextWindowSize(ImVec2(400, 300));
+
+  ImGui::Begin("Music Tycoon - Main Menu", nullptr,
+               ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+                   ImGuiWindowFlags_NoCollapse);
+
+  ImGui::Text("Welcome to Music Tycoon!");
+  ImGui::Separator();
+
+  ImGui::Text("Enter Stage Name:");
+  static char nameBuf[32] = "New Artist";
+  ImGui::InputText("##artistname", nameBuf, IM_ARRAYSIZE(nameBuf));
+
+  ImGui::Spacing();
+
+  if (ImGui::Button("START CAREER", ImVec2(-1, 60))) {
+    player.name = nameBuf;
+    state = GameState::Playing; // Switch to the game!
+  }
+
+  if (ImGui::Button("QUIT", ImVec2(-1, 30))) {
+    exit(0);
+  }
+
+  ImGui::End();
+}

@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <vector>
 
+// Define states for our game
 // --- MAIN ---
 int main() {
   // SFML 3.0 Window Creation
@@ -23,10 +24,12 @@ int main() {
   if (!ImGui::SFML::Init(window))
     return -1;
 
+  // Game Variables
+  GameState currentState = GameState::MainMenu;
   Player player("The Architect");
   std::vector<Song> songsMade;
   std::vector<Song> songsReleased;
-  std::vector<Album> albumsReleased; // Correctly initialized
+  std::vector<Album> albumsReleased;
 
   sf::Clock deltaClock;
   gameLog.Add("Engine Initialized.");
@@ -43,38 +46,40 @@ int main() {
     sf::Time dt = deltaClock.restart();
     ImGui::SFML::Update(window, dt);
 
-    // --- Logic ---
-    SimulateEconomy(songsReleased, albumsReleased, player, dt);
+    // --- GAME STATE MACHINE ---
+    switch (currentState) {
+    case GameState::MainMenu: {
+      DrawMainMenu(currentState, player);
+      break;
+    }
 
-    // Clean up old songs
-    std::erase_if(songsReleased, [](const Song &s) {
-      // Convert sf::Time to float seconds
-      return s.lifeTime >= EconomyConfig::SONG_LIFETIME.asSeconds();
-    });
+    case GameState::Playing: {
+      // --- Logic ---
+      SimulateEconomy(songsReleased, albumsReleased, player, dt);
 
-    // Clean up old albums
-    std::erase_if(albumsReleased, [](const Album &a) {
-      // You already have ALBUM_LIFETIME defined in your config! Use it:
-      return a.lifeTime >= EconomyConfig::ALBUM_LIFETIME.asSeconds();
+      // Clean up old songs
+      std::erase_if(songsReleased, [](const Song &s) {
+        return s.lifeTime >= EconomyConfig::SONG_LIFETIME.asSeconds();
+      });
 
-      // OR if you want the "Double song lifetime" logic:
-      // return a.lifeTime >= (EconomyConfig::SONG_LIFETIME.asSeconds() * 2.0f);
-    });
+      // Clean up old albums
+      std::erase_if(albumsReleased, [](const Album &a) {
+        return a.lifeTime >= EconomyConfig::ALBUM_LIFETIME.asSeconds();
+      });
 
-    // --- UI ---
+      // --- Drawing UI ---
+      DrawStudioWindow(player, songsMade, songsReleased, albumsReleased);
+      DrawAnalyticsWindow(songsReleased, albumsReleased);
 
-    // FIX: Added 'albumsReleased' as the 4th argument
-    DrawStudioWindow(player, songsMade, songsReleased, albumsReleased);
+      DrawUpgradeWindow("Skills", player, player.skills);
+      DrawUpgradeWindow("Studio Gear", player, player.studio_tools);
+      gameLog.DrawWindow();
 
-    // FIX: You likely want to pass albums to Analytics to see their
-    // performance If your DrawAnalyticsWindow doesn't support this yet,
-    // you'll need to update its parameters too
-    DrawAnalyticsWindow(songsReleased, albumsReleased);
+      break;
+    }
+    }
 
-    DrawUpgradeWindow("Skills", player, player.skills);
-    DrawUpgradeWindow("Studio Gear", player, player.studio_tools);
-    gameLog.DrawWindow();
-
+    // Render everything
     window.clear(sf::Color(25, 25, 30));
     ImGui::SFML::Render(window);
     window.display();
