@@ -38,8 +38,9 @@ void EventLog::DrawWindow(sf::Time dt, std::shared_ptr<float> tickTimer) {
 
 std::string BeginDropDownMenu(bool IsOpen) {
   static int selected_idx = 0;
-  const char *items[] = {"Pop",  "Rock",      "Hip-Hop", "R&B",
-                         "Jazz", "Classical", "Other"};
+  const char *items[] = {"Pop",       "Rock",  "Hip-Hop",     "R&B",     "Jazz",
+                         "Classical", "Other", "Electronic",  "Country", "Folk",
+                         "Metal",     "Indie", "Experimental"};
 
   // 1. Use 'if' instead of 'while' to prevent the app from freezing.
   if (IsOpen) {

@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 
-
 // --- HELPER FUNCTIONS ---
 
 // --- MODERN RANDOM ENGINE ---
@@ -84,13 +83,190 @@ std::string GenerateSongName() {
                                               "Supernova Soul",
                                               "Black Hole Blues",
                                               "Milky Way Melody",
-                                              "Andromeda Anthem"};
+                                              "Andromeda anthem",
+                                              "Electric Eclipse",
+                                              "Digital Dreams",
+                                              "Quantum Leap of Faith",
+                                              "Echoes of Eternity",
+                                              "Whispers of the Cosmos",
+                                              "The Last Goodbye",
+                                              "Digital Dust",
+                                              "Stardust Serenade",
+                                              "Cosmic Waves",
+                                              "Neon Dreams",
+                                              "Cybernetic Odyssey",
+                                              "Lost in Hyperspace",
+                                              "Fractured Frequencies",
+                                              "The Algorithm of Love",
+                                              "Electric Heartbeat",
+                                              "Binary Serenade",
+                                              "The Glitch in the Heart",
+                                              "Virtual Vibrations",
+                                              "Spectral Symphony",
+                                              "Crystal Code",
+                                              "Fractured Rhythms",
+                                              "Quantum Code",
+                                              "Cosmic Code",
+                                              "Stardust Serenity",
+                                              "Echoes of Eternity",
+                                              "Whispers of the Cosmos",
+                                              "Digital Dawn",
+                                              "Cybernetic Uprising",
+                                              "Neon Nights",
+                                              "Nebula Nights",
+                                              "Galactic Groove",
+                                              "Supernova Soul",
+                                              "Black Hole Blues",
+                                              "Milky Way Melody",
+                                              "Andromeda anthem",
+                                              "Electric Eclipse",
+                                              "Digital Dreams",
+                                              "Quantum Leap of Faith",
+                                              "Echoes of Eternity",
+                                              "Whispers of the Cosmos",
+                                              "The Last Goodbye",
+                                              "Digital Dust",
+                                              "Stardust Serenade",
+                                              "Cosmic Waves",
+                                              "Neon Dreams",
+                                              "Cybernetic Odyssey",
+                                              "Lost in Hyperspace",
+                                              "Fractured Frequencies",
+                                              "The Algorithm of Love",
+                                              "Electric Heartbeat",
+                                              "Binary Serenade",
+                                              "The Glitch in the Heart",
+                                              "Virtual Vibrations",
+                                              "Spectral Symphony",
+                                              "Crystal Code",
+                                              "Fractured Rhythms",
+                                              "Quantum Code",
+                                              "Cosmic Code",
+                                              "Stardust Serenity",
+                                              "Echoes of Eternity",
+                                              "Whispers of the Cosmos",
+                                              "Digital Dawn",
+                                              "Cybernetic Uprising",
+                                              "Neon nights",
+                                              "Nebula nights",
+                                              "Galactic Groove",
+                                              "Supernova Soul",
+                                              "Black Hole Blues",
+                                              "Milky Way Melody",
+                                              "Andromeda anthem",
+                                              "Electric Eclipse",
+                                              "Digital Dreams",
+                                              "Quantum Leap of Faith",
+                                              "Echoes of Eternity",
+                                              "Whispers of the Cosmos",
+                                              "The Last Goodbye",
+                                              "Digital Dust",
+                                              "Stardust Serenade",
+                                              "Cosmic Waves",
+                                              "Neon Dreams",
+                                              "Cybernetic Odyssey",
+                                              "Lost in Hyperspace",
+                                              "Fractured Frequencies",
+                                              "The Algorithm of Love",
+                                              "Electric Heartbeat",
+                                              "Binary Serenade",
+                                              "The Glitch in the Heart",
+                                              "Virtual Vibrations",
+                                              "Spectral Symphony",
+                                              "Crystal Code",
+                                              "Fractured Rhythms",
+                                              "Quantum Code",
+                                              "Cosmic Code",
+                                              "Stardust Serenity",
+                                              "Echoes of Eternity",
+                                              "Whispers of the Cosmos",
+                                              "Digital Dawn",
+                                              "Cybernetic Uprising",
+                                              "Neon nights",
+                                              "Nebula nights",
+                                              "Galactic Groove",
+                                              "Supernova Soul",
+                                              "Black Hole Blues",
+                                              "Milky Way Melody",
+                                              "Andromeda anthem",
+                                              "Electric Eclipse",
+                                              "Digital Dreams",
+                                              "Quantum Leap of Faith",
+                                              "Echoes of Eternity",
+                                              "Whispers of the Cosmos",
+                                              "The Last Goodbye",
+                                              "Digital Dust",
+                                              "Stardust Serenade",
+                                              "Cosmic Waves",
+                                              "Neon Dreams",
+                                              "Cybernetic Odyssey",
+                                              "Lost in Hyperspace",
+                                              "Fractured Frequencies",
+                                              "The Algorithm of Love",
+                                              "Electric Heartbeat",
+                                              "Binary Serenade",
+                                              "The Glitch in the Heart",
+                                              "Virtual Vibrations",
+                                              "Spectral Symphony",
+                                              "Crystal Code",
+                                              "Fractured Rhythms",
+                                              "Quantum Code",
+                                              "Cosmic Code",
+                                              "Stardust Serenity",
+                                              "Echoes of Eternity",
+                                              "Whispers of the Cosmos",
+                                              "Digital Dawn",
+                                              "Cybernetic Uprising",
+                                              "Neon nights",
+                                              "Nebula nights",
+                                              "Galactic Groove",
+                                              "Supernova Soul",
+                                              "Black Hole Blues",
+                                              "Milky Way Melody",
+                                              "Andromeda anthem",
+                                              "Electric Eclipse",
+                                              "Digital Dreams",
+                                              "Quantum Leap of Faith",
+                                              "Echoes of Eternity",
+                                              "Whispers of the Cosmos",
+                                              "The Last Goodbye",
+                                              "Digital Dust",
+                                              "Stardust Serenade",
+                                              "Cosmic Waves",
+                                              "Neon Dreams",
+                                              "Cybernetic Odyssey",
+                                              "Lost in Hyperspace",
+                                              "Fractured Frequencies",
+                                              "The Algorithm of Love",
+                                              "Electric Heartbeat",
+                                              "Binary Serenade",
+                                              "The Glitch in the Heart",
+                                              "Virtual Vibrations",
+                                              "Spectral Symphony",
+                                              "Crystal Code",
+                                              "Fractured Rhythms",
+                                              "Quantum Code",
+                                              "Cosmic Code",
+                                              "Stardust Serenity",
+                                              "Echoes of Eternity",
+                                              "Whispers of the Cosmos",
+                                              "Digital Dawn",
+                                              "Cybernetic Uprising",
+                                              "Neon nights",
+                                              "Nebula nights",
+                                              "Galactic Groove",
+                                              "Supernova Soul",
+                                              "Black Hole Blues",
+                                              "Milky Way Melody",
+                                              "Andromeda anthem"};
   return songNames[Random::Int(0, static_cast<int>(songNames.size()) - 1)];
 }
 
 std::string GetAlbumGenre() {
-  std::vector<std::string> genres = {"Pop",  "Rock",      "Hip-Hop", "R&B",
-                                     "Jazz", "Classical", "Other"};
+  std::vector<std::string> genres = {
+      "Pop",       "Rock",  "Hip-Hop",     "R&B",     "Jazz",
+      "Classical", "Other", "Electronic",  "Country", "Folk",
+      "Metal",     "Indie", "Experimental"};
 
   // calculate most used genre in album
   int popCount = 0;
@@ -100,6 +276,12 @@ std::string GetAlbumGenre() {
   int jazzCount = 0;
   int classicalCount = 0;
   int otherCount = 0;
+  int electronicCount = 0;
+  int countryCount = 0;
+  int folkCount = 0;
+  int metalCount = 0;
+  int indieCount = 0;
+  int experimentalCount = 0;
 
   for (int i = 0; i < 5; i++) {
     if (genres[i] == "Pop") {
@@ -114,8 +296,20 @@ std::string GetAlbumGenre() {
       jazzCount++;
     } else if (genres[i] == "Classical") {
       classicalCount++;
-    } else {
+    } else if (genres[i] == "Other") {
       otherCount++;
+    } else if (genres[i] == "Electronic") {
+      electronicCount++;
+    } else if (genres[i] == "Country") {
+      countryCount++;
+    } else if (genres[i] == "Folk") {
+      folkCount++;
+    } else if (genres[i] == "Metal") {
+      metalCount++;
+    } else if (genres[i] == "Indie") {
+      indieCount++;
+    } else if (genres[i] == "Experimental") {
+      experimentalCount++;
     }
   }
 
@@ -132,8 +326,22 @@ std::string GetAlbumGenre() {
     return "R&B";
   } else if (mostUsed == jazzCount) {
     return "Jazz";
-  } else {
-    return "Unknown";
+  } else if (mostUsed == classicalCount) {
+    return "Classical";
+  } else if (mostUsed == otherCount) {
+    return "Other";
+  } else if (mostUsed == electronicCount) {
+    return "Electronic";
+  } else if (mostUsed == countryCount) {
+    return "Country";
+  } else if (mostUsed == folkCount) {
+    return "Folk";
+  } else if (mostUsed == metalCount) {
+    return "Metal";
+  } else if (mostUsed == indieCount) {
+    return "Indie";
+  } else if (mostUsed == experimentalCount) {
+    return "Experimental";
   }
 }
 
