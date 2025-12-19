@@ -1,6 +1,8 @@
 #include "../headers/graphics.h"
 #include "../headers/helper.h"
+#include "../headers/simulation.h"
 #include "imgui.h"
+#include <memory>
 
 EventLog gameLog;
 
@@ -10,12 +12,26 @@ void EventLog::Add(const std::string &message) {
     logs.pop_back();
 }
 
-void EventLog::DrawWindow() {
+void EventLog::DrawWindow(sf::Time dt, std::shared_ptr<float> tickTimer) {
+  // We NO LONGER increment the timer here.
+  // The Simulation should be the one "driving" the clock.
+
   if (ImGui::Begin("News Feed")) {
+    // Get existing trend (doesn't trigger change unless Simulation missed it)
+    auto [trendMultiplier, trendingGenre] = GetMarketTrend(tickTimer);
+
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "MARKET ALERT:");
+    ImGui::SameLine();
+    ImGui::Text("Current Trend: %s", trendingGenre.c_str());
+    ImGui::Text("Impact Multiplier: %.2fx", trendMultiplier);
+
+    ImGui::Separator();
+    ImGui::BeginChild("LogScroll"); // Added scroll area for news
     for (const auto &log : logs) {
       ImGui::TextWrapped("%s", log.c_str());
       ImGui::Separator();
     }
+    ImGui::EndChild();
   }
   ImGui::End();
 }
@@ -196,24 +212,29 @@ void DrawStudioWindow(Player &player, std::vector<Song> &songsMade,
 void DrawAnalyticsWindow(const std::vector<Song> &songsReleased,
                          std::vector<Album> &albumsReleased) {
   if (ImGui::Begin("Charts & Analytics")) {
-    if (songsReleased.empty()) {
+    if (songsReleased.empty() && albumsReleased.empty()) {
       ImGui::TextDisabled("No releases yet.");
     } else {
       if (ImGui::BeginTable("Charts", 5,
                             ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                 ImGuiTableFlags_ScrollY)) {
-        ImGui::TableSetupColumn("Track");
+        ImGui::TableSetupColumn("Track/Album");
         ImGui::TableSetupColumn("Hype");
         ImGui::TableSetupColumn("Streams");
         ImGui::TableSetupColumn("Sales");
         ImGui::TableSetupColumn("Rev");
         ImGui::TableHeadersRow();
 
-        for (const auto &song : songsReleased) {
+        // --- SONGS (Iterate Backwards: Newest -> Oldest) ---
+        for (auto it = songsReleased.rbegin(); it != songsReleased.rend();
+             ++it) {
+          const auto &song = *it; // Access the song via the iterator
+
           ImGui::TableNextRow();
 
           ImGui::TableSetColumnIndex(0);
-          ImGui::Text("%s", song.name.c_str());
+          ImGui::Text("Song: %s",
+                      song.name.c_str()); // Added label to distinguish
 
           ImGui::TableSetColumnIndex(1);
           ImGui::ProgressBar(std::clamp((float)song.hype, 0.0f, 1.0f),
@@ -229,11 +250,16 @@ void DrawAnalyticsWindow(const std::vector<Song> &songsReleased,
           ImGui::Text("$%.2f", song.earnings);
         }
 
-        for (const auto &album : albumsReleased) {
+        // --- ALBUMS (Iterate Backwards: Newest -> Oldest) ---
+        for (auto it = albumsReleased.rbegin(); it != albumsReleased.rend();
+             ++it) {
+          const auto &album = *it;
+
           ImGui::TableNextRow();
 
           ImGui::TableSetColumnIndex(0);
-          ImGui::Text("%s", album.name.c_str());
+          ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Album: %s",
+                             album.name.c_str()); // Highlight albums
 
           ImGui::TableSetColumnIndex(1);
           ImGui::ProgressBar(std::clamp((float)album.hype, 0.0f, 1.0f),

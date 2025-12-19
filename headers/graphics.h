@@ -13,9 +13,11 @@
 struct EventLog {
   std::deque<std::string> logs;
 
-  void Add(const std::string &message);
+  // Create the timer here so it "lives" as long as the EventLog does
+  std::shared_ptr<float> ticktimer = std::make_shared<float>(0.0f);
 
-  void DrawWindow();
+  void Add(const std::string &message);
+  void DrawWindow(sf::Time dt, std::shared_ptr<float> tickTimer);
 };
 
 std::string BeginDropDownMenu(bool IsOpen);

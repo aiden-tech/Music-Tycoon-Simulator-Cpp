@@ -10,6 +10,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
+#include <string>
 
 // --- CORE SIMULATION LOGIC ---
 void UpdateFanbase(Player &player, int streams, double songQuality,
@@ -59,46 +61,103 @@ void UpdateFanbase(Player &player, int streams, double songQuality,
   player.fans = std::max(0, player.fans - lostFans);
 }
 
+std::pair<float, std::string> GetMarketTrend(std::shared_ptr<float> tickTimer) {
+  // 1. Safety check
+  if (!tickTimer)
+    return {1.0f, "Neutral"};
+
+  // 2. Persistent State
+  static bool initialized = false;
+  static float currentMultiplier = 1.0f;
+  static std::string currentGenre = "Pop";
+  static const std::vector<std::string> genres = {
+      "Pop", "Rock", "Hip-Hop", "R&B", "Jazz", "Classical", "Other"};
+
+  const float TREND_DURATION = 45.0f;
+
+  // 3. First Run Initialization
+  // Immediately pick a trend so we don't wait 45s for the first event
+  if (!initialized) {
+    currentGenre = genres[rand() % genres.size()];
+    currentMultiplier = std::max(0.1f, (float)Random::Normal(0.5, 0.1));
+    initialized = true;
+  }
+
+  // 4. Update Logic
+  if (*tickTimer >= TREND_DURATION) {
+    // Soft Reset: Subtract duration to preserve 'overshoot' time (prevents time
+    // drift)
+    *tickTimer -= TREND_DURATION;
+
+    // Pick a NEW genre (ensure it is different from the previous one)
+    std::string newGenre = currentGenre;
+    while (newGenre == currentGenre) {
+      newGenre = genres[rand() % genres.size()];
+    }
+    currentGenre = newGenre;
+
+    // Pick new multiplier (Clamp to ensure it's never negative)
+    currentMultiplier = std::max(0.1f, (float)Random::Normal(0.5, 0.1));
+
+    // Format the log message nicely
+    std::stringstream ss;
+    ss << "Market Shift! Trending: " << currentGenre << " (+" << std::fixed
+       << std::setprecision(2) << currentMultiplier << "x bonus)";
+
+    gameLog.Add(ss.str());
+  }
+
+  return {currentMultiplier, currentGenre};
+}
+
 void SimulateEconomy(std::vector<Song> &songs, std::vector<Album> &albums,
-                     Player &player, sf::Time dt) {
-  // Check if there is anything to simulate
+                     Player &player, sf::Time dt,
+                     std::shared_ptr<float> tickTimer) {
+
   if (songs.empty() && albums.empty())
     return;
 
-  // 1. Always update age (framerate independent)
-  for (auto &song : songs) {
+  // 1. Update lifetimes (every frame)
+  for (auto &song : songs)
     song.lifeTime += dt.asSeconds();
-  }
-  for (auto &album : albums) {
+  for (auto &album : albums)
     album.lifeTime += dt.asSeconds();
-  }
 
-  static float tickTimer = 0.0f;
-  tickTimer += dt.asSeconds();
+  // 2. IMPORTANT: Get market trend ONCE per frame, not per song
+  // This prevents the "Reset Bug"
+  auto [trendMultiplier, trendingGenre] = GetMarketTrend(tickTimer);
 
-  // 2. Run Economics at fixed tick rate
-  if (tickTimer >= EconomyConfig::ECONOMY_TICK_RATE) {
+  // 3. Increment the shared timer
+  *tickTimer += dt.asSeconds();
 
-    // --- PART A: SINGLES SIMULATION ---
+  // 4. Run Economics at fixed tick rate
+  if (*tickTimer >= EconomyConfig::ECONOMY_TICK_RATE) {
+
     for (auto &song : songs) {
       if (song.hype <= 0.01f) {
-        song.dailyStreams = 0; // Song is "dead" on charts
+        song.dailyStreams = 0;
         continue;
       }
 
+      // Calculation Logic
       double fairPrice = GetRecommendedPrice(song.quality, false);
       double priceRatio = fairPrice / std::max(0.01, (double)song.price);
       double demandMultiplier = std::clamp(
           std::pow(priceRatio, EconomyConfig::PRICE_ELASTICITY), 0.0, 3.0);
 
-      // Discovery & Streams
+      // Market Trend logic
+      float activeBonus = 1.0f;
+      if (song.genre == trendingGenre) {
+        activeBonus += trendMultiplier; // Bonus boost
+      }
+
       double baseDiscovery = Random::Normal(50.0, 15.0);
       double fanReach = player.fans * 0.05;
       double potentialListeners = (baseDiscovery + fanReach) * song.hype;
       double retention = std::clamp(song.quality / 10.0, 0.1, 1.2);
 
-      int actualStreams =
-          static_cast<int>(potentialListeners * retention * demandMultiplier);
+      int actualStreams = static_cast<int>(potentialListeners * retention *
+                                           demandMultiplier * activeBonus);
 
       // Sales
       double saleProb =
@@ -185,6 +244,6 @@ void SimulateEconomy(std::vector<Song> &songs, std::vector<Album> &albums,
 
     player.fans = std::max(0, player.fans - lostFans);
 
-    tickTimer = 0.0f;
+    *tickTimer = 0.0f;
   }
 }

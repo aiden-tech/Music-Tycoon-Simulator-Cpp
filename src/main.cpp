@@ -6,16 +6,15 @@
 #include "../headers/song.h"
 
 #include "imgui-SFML.h"
+
 #include <SFML/Graphics.hpp>
 #include <SFML/System/Time.hpp>
 
+#include <memory>
 #include <optional>
 #include <string>
-#include <sys/stat.h>
 #include <vector>
 
-// Define states for our game
-// --- MAIN ---
 int main() {
   // SFML 3.0 Window Creation
   sf::RenderWindow window(sf::VideoMode({1280, 800}), "Music Tycoon 2025");
@@ -26,12 +25,18 @@ int main() {
 
   // Game Variables
   GameState currentState = GameState::MainMenu;
+
+  // 2. CREATE TIMER (Before the loop)
+  auto globalTickTimer = std::make_shared<float>(0.0f);
+
   Player player("The Architect");
   std::vector<Song> songsMade;
   std::vector<Song> songsReleased;
   std::vector<Album> albumsReleased;
 
   sf::Clock deltaClock;
+
+  // 3. LOG INITIALIZATION
   gameLog.Add("Engine Initialized.");
 
   while (window.isOpen()) {
@@ -55,9 +60,11 @@ int main() {
 
     case GameState::Playing: {
       // --- Logic ---
-      SimulateEconomy(songsReleased, albumsReleased, player, dt);
+      // 4. CALL SIMULATION (Pass global timer)
+      SimulateEconomy(songsReleased, albumsReleased, player, dt,
+                      globalTickTimer);
 
-      // Clean up old songs
+      // Clean up old songs (C++20 erase_if)
       std::erase_if(songsReleased, [](const Song &s) {
         return s.lifeTime >= EconomyConfig::SONG_LIFETIME.asSeconds();
       });
@@ -73,7 +80,9 @@ int main() {
 
       DrawUpgradeWindow("Skills", player, player.skills);
       DrawUpgradeWindow("Studio Gear", player, player.studio_tools);
-      gameLog.DrawWindow();
+
+      // 5. DRAW LOG WINDOW (Fixed typo: gamelog -> gameLog)
+      gameLog.DrawWindow(dt, globalTickTimer);
 
       break;
     }
