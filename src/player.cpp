@@ -96,55 +96,110 @@ double Player::CalcQuality() const {
 
 // 3. ALBUM AGGREGATION
 double Player::CalcAlbumQuality(const std::vector<double> &songQualities) {
+  // 1. Safety check
   if (songQualities.empty())
     return 0.0;
 
-  // Sort descending
+  // 2. Create a copy and sort descending (C++20 ranges)
   std::vector<double> sortedSongs = songQualities;
-  std::sort(sortedSongs.begin(), sortedSongs.end(), std::greater<double>());
+  std::ranges::sort(sortedSongs, std::greater<double>());
 
-  // 1. Weighted Average (Top songs carry the album)
-  double weightedSum = 0;
-  double totalWeight = 0;
+  // 3. Weighted Average (The "Hit Single" Effect)
+  // Realism: Listeners value the "Highs" of an album more than the "Lows".
+  // We use a gentle decay so the top 3-4 songs drive the score,
+  // but the 'tail' still matters.
+  double weightedSum = 0.0;
+  double totalWeight = 0.0;
+
   for (size_t i = 0; i < sortedSongs.size(); ++i) {
-    double weight = std::pow(0.6, i); // Sharp drop off for worse songs
+    // Decay: 100%, 85%, 72%... floor at 25% weight.
+    // This ensures even the last track contributes 25% of its value to the
+    // average.
+    double weight = std::max(0.25, std::pow(0.85, static_cast<double>(i)));
     weightedSum += sortedSongs[i] * weight;
     totalWeight += weight;
   }
+
+  // This is our starting point.
+  // If inputs are [10, 20, 10, 20, 15], this will naturally settle around ~16.
   double baseQuality = weightedSum / totalWeight;
 
-  // 2. Consistency (Flow) Bonus
-  // We need to calculate standard deviation to see how "consistent" the album
-  // is
+  // 4. Cohesion (Standard Deviation)
+  // Realism: An album with wild quality swings (90, 10, 90, 10) feels
+  // disjointed. An album of all 50s feels cohesive.
   double sum = std::accumulate(sortedSongs.begin(), sortedSongs.end(), 0.0);
-  double mean = sum / sortedSongs.size();
-  double sq_sum = std::inner_product(sortedSongs.begin(), sortedSongs.end(),
-                                     sortedSongs.begin(), 0.0);
-  double stdev =
-      std::sqrt(std::max(0.0, (sq_sum / sortedSongs.size()) - (mean * mean)));
+  double mean = sum / static_cast<double>(sortedSongs.size());
 
-  // IMPORTANT FIX: The flow bonus must scale with the quality.
-  // An album of all 1/100 songs is "consistent" but shouldn't get a +5 bonus.
-  double qualityScale = baseQuality / 100.0;
-  double flowModifier = (10.0 - stdev) * 0.5 * qualityScale;
+  double sqDiffSum = 0.0;
+  for (double q : sortedSongs) {
+    double diff = q - mean;
+    sqDiffSum += diff * diff;
+  }
 
-  // 3. Filler Penalty
-  double fillerPenalty = 0;
-  if (sortedSongs.size() >= 4) {
+  // Variance logic
+  double variance =
+      (sortedSongs.size() > 1)
+          ? sqDiffSum / static_cast<double>(sortedSongs.size() - 1)
+          : 0.0;
+  double stdev = std::sqrt(std::max(0.0, variance));
+
+  // Cohesion Logic:
+  // - High Stdev (e.g. > 15) -> Penalty (Disjointed)
+  // - Low Stdev (e.g. < 5)  -> Bonus (Consistent flow)
+  // Note: We scale this impact. It matters less for low-quality albums.
+  // A consistent 15/100 album is still just a 15, not a 20.
+  double cohesionModifier = 0.0;
+  if (stdev < 5.0) {
+    cohesionModifier = 2.0; // Small bonus for tight consistency
+  } else if (stdev > 15.0) {
+    // Penalty scales with how "good" the album tries to be.
+    // If base is 80 and stdev is 20, penalty is noticeable (-4).
+    // If base is 15 and stdev is 5 (irrelevant), penalty is tiny.
+    cohesionModifier = -(stdev - 15.0) * 0.25;
+  }
+
+  // 5. Dynamic Filler Penalty
+  // Realism: "Filler" isn't just "Bad songs". It's songs that ruin the specific
+  // album. If the Average is 15, a 10 IS NOT FILLER. It fits the vibe. If the
+  // Average is 80, a 40 IS FILLER.
+  double fillerPenalty = 0.0;
+
+  // We only check for filler if the album claims to be decent (> 40 avg)
+  // This PROTECTS your low-quality 10-20 album from being penalized.
+  if (sortedSongs.size() >= 4 && baseQuality > 40.0) {
+    double fillerThreshold =
+        baseQuality * 0.6; // Filler is 60% of average or less
     int fillerCount = 0;
-    for (double q : sortedSongs)
-      if (q < 20.0)
-        fillerCount++;
-    if (fillerCount > (sortedSongs.size() * 0.4))
-      fillerPenalty = 10.0;
+
+    for (double q : sortedSongs) {
+      if (q < fillerThreshold)
+        ++fillerCount;
+    }
+
+    // Only punish if it's a significant portion of the album (> 25%)
+    if (fillerCount > (sortedSongs.size() * 0.25)) {
+      fillerPenalty = fillerCount * 2.0; // -2 per filler track
+    }
   }
 
-  double finalAlbumQuality = baseQuality + flowModifier - fillerPenalty;
+  // 6. Length Bonus (The "LP" Effect)
+  // Realism: Critics respect a 12-track project more than a 6-track one,
+  // provided the quality holds up.
+  double lengthBonus = 0.0;
+  if (sortedSongs.size() >= 10)
+    lengthBonus = 2.0;
+  if (sortedSongs.size() >= 14)
+    lengthBonus = 3.5;
 
-  // 4. Hard Diminishing Returns (Make it very hard to get a 90+)
-  if (finalAlbumQuality > 80.0) {
-    finalAlbumQuality = 80.0 + (finalAlbumQuality - 80.0) * 0.4;
+  // 7. Calculate Final
+  double finalQuality =
+      baseQuality + cohesionModifier + lengthBonus - fillerPenalty;
+
+  // 8. Soft Caps (Diminishing Returns)
+  // It is exponentially harder to go from 90->95 than 50->55.
+  if (finalQuality > 90.0) {
+    finalQuality = 90.0 + (finalQuality - 90.0) * 0.5;
   }
 
-  return std::clamp(finalAlbumQuality, 1.0, 100.0);
+  return std::clamp(finalQuality, 1.0, 100.0);
 }
