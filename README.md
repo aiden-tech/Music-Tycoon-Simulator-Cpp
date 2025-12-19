@@ -95,7 +95,6 @@ How to play (concise, non-speculative)
 - You improve over time by upgrading personal skills and studio tools.
 - The core loop is: create songs → release/promote → earn progression → spend on upgrades → repeat.
 
-(Controls, UI specifics, save/load behavior, and exact metrics are intentionally not expanded here to avoid inventing details. Document controls or gameplay parameters in-game or by adding a short HOWTO.md if you want those included.)
 
 Contributing
 -----
