@@ -16,49 +16,59 @@
 // --- CORE SIMULATION LOGIC ---
 void UpdateFanbase(Player &player, int streams, double songQuality,
                    double hype) {
-  // 1. Logarithmic Scaling (Market Saturation)
-  // As you get more fans, it becomes harder to reach "new" people.
-  // We use a saturation factor to slow down growth at high numbers.
-  double saturationFactor = 1.0;
-  if (player.fans > 100000) {
-    // This makes growth feel slower once you hit 100k, 1M, etc.
-    saturationFactor = 1.0 / (1.0 + std::log10(player.fans / 10000.0));
+  // --- A. Base Conversion (Getting new listeners) ---
+  // A "Good" song (70+) converts 1% of listeners.
+  // A "Masterpiece" (95+) converts 2.5%.
+  // A "Bad" song (<40) converts 0%.
+  double qualityFactor =
+      std::max(0.0, (songQuality - 40.0) / 40.0); // Normalized 0.0 to 1.5
+  double baseConversionRate = 0.008;              // 0.8% base chance
+
+  // --- B. Saturation Logic (Diminishing Returns) ---
+  // It's easy to get your first 1,000 fans. Hard to get your 100 millionth.
+  double saturation = 1.0;
+  if (player.fans > 1000) {
+    // Logarithmic curve: slows down growth significantly as you get huge
+    saturation = 1.0 / (std::log10(player.fans) - 1.5);
+    // Example: 10k fans -> saturation ~0.4
+    // Example: 1M fans  -> saturation ~0.2
+  }
+  // Clamp saturation so it never breaks math (min 0.05)
+  saturation = std::clamp(saturation, 0.05, 1.0);
+
+  // --- C. Calculate New Fans ---
+  // Formula: Streams * (Base Rate * QualityBonus) * MarketHype * Saturation
+  double rawNewFans = streams * (baseConversionRate * qualityFactor) *
+                      std::max(0.5, hype) * saturation;
+  int newFans = static_cast<int>(rawNewFans);
+
+  // --- D. The "Viral" Lottery ---
+  // Small chance for massive explosive growth (TikTok/Shorts effect)
+  // Higher hype = higher chance.
+  if (hype > 0.5 && Random::Chance(0.001 * hype)) { // 0.1% chance per tick
+    int viralSpike = static_cast<int>(streams * (songQuality / 10.0));
+    newFans += viralSpike;
+    // Add a distinct notification so the player knows WHY they jumped
+    gameLog.Add("VIRAL HIT! Gained " + std::to_string(viralSpike) +
+                " fans instantly!");
   }
 
-  // 2. Sophisticated Conversion logic
-  // Conversion is now heavily influenced by Quality.
-  // High quality (80+) builds "Superfans", low quality (<30) actually hurts
-  // your brand.
-  double qualityMult =
-      (songQuality - 40.0) / 40.0; // 100 = 1.5x, 40 = 0x, 0 = -1.0x
+  // --- E. Churn (Losing Fans) ---
+  // You always lose a tiny bit of fans (people lose interest).
+  // Low quality releases accelerate this.
+  double churnRate = 0.0001; // 0.01% natural daily churn
+  if (songQuality < 40.0)
+    churnRate += 0.005; // 0.5% penalty for bad songs
+  if (hype < 0.1)
+    churnRate += 0.001; // Penalty for being inactive
 
-  // Calculate new fans based on streams, hype, and quality
-  // We use a smaller base rate (0.01) to keep numbers from exploding too fast
-  double conversionRate = 0.01 * std::max(0.1, hype) * qualityMult;
-  int netChange = static_cast<int>(streams * conversionRate * saturationFactor);
+  int lostFans = static_cast<int>(player.fans * churnRate);
 
-  // 3. The "Viral Moment" (The TikTok Factor)
-  // 0.5% chance to have a song go viral, regardless of quality (though quality
-  // helps)
-  if (Random::Chance(0.0001 * hype)) { // Only high-hype songs likely go viral
-    int viralFans = static_cast<int>(streams * (songQuality / 100.0) * 2.0);
-    player.fans += viralFans;
-    gameLog.Add("A song went viral!");
-  }
-
-  // 4. Natural Churn (Retention)
-  // Fans leave if you are inactive (low hype) or if your music is bad.
-  double baseChurn = 0.0005; // 0.05% natural decay
-  if (songQuality < 35.0)
-    baseChurn += 0.002; // Penalty for "selling out" or bad quality
-  if (hype < 0.2)
-    baseChurn += 0.001; // Penalty for being forgotten
-
-  int lostFans = static_cast<int>(player.fans * baseChurn);
-
-  // Apply the changes
-  player.fans += netChange;
-  player.fans = std::max(0, player.fans - lostFans);
+  // --- F. Apply & Ensure Safety ---
+  player.fans += newFans;
+  player.fans -= lostFans;
+  if (player.fans < 0)
+    player.fans = 0;
 }
 
 std::pair<float, std::string> GetMarketTrend(std::shared_ptr<float> tickTimer) {

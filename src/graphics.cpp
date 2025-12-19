@@ -74,93 +74,123 @@ void DrawStudioWindow(Player &player, std::vector<Song> &songsMade,
 
   // --- 1. Header & Stats ---
   ImGui::TextColored(ImVec4(0, 1, 0, 1), "Artist: %s", player.name.c_str());
-  ImGui::SameLine(ImGui::GetWindowWidth() - 150);
-  ImGui::Text("Fans: %d", player.fans);
+
+  ImGui::SameLine(ImGui::GetWindowWidth() - 220);
+  std::string fanText = "Fans: " + std::to_string(player.fans);
+  ImGui::Text("%s", fanText.c_str());
+
   ImGui::Text("Money: $%.2f", player.money);
   ImGui::Separator();
 
   // --- 2. Recording Logic ---
   ImGui::Text("Create New Track");
+
   static char nameBuffer[128] = "New Song";
   ImGui::InputText("##songname", nameBuffer, IM_ARRAYSIZE(nameBuffer));
   ImGui::SameLine();
   if (ImGui::Button("Rnd Name")) {
     strcpy_s(nameBuffer, GenerateSongName().c_str());
   }
-  auto SelectedGenre = BeginDropDownMenu(true);
 
-  // 1. Show the STABLE estimate in the UI
+  // Genre Selection
+  static std::string currentGenre = "Pop";
+  if (ImGui::BeginCombo("Genre", currentGenre.c_str())) {
+    std::vector<std::string> genres = {"Pop",  "Rock",      "Hip-Hop", "R&B",
+                                       "Jazz", "Classical", "Other"};
+    for (const auto &g : genres) {
+      bool isSelected = (currentGenre == g);
+      if (ImGui::Selectable(g.c_str(), isSelected)) {
+        currentGenre = g;
+      }
+      if (isSelected)
+        ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+
+  // Quality Preview
   double uiEstimate = player.GetBaseQuality();
-  ImGui::TextColored(ImVec4(1, 1, 0, 1), "Potential Quality: %.1f", uiEstimate);
+  ImGui::TextColored(ImVec4(1, 1, 0, 1), "Est. Quality: %.1f (Skill based)",
+                     uiEstimate);
 
-  if (ImGui::Button("Record Song")) {
-    // 2. Roll the ACTUAL unique quality only once when the button is clicked
+  if (ImGui::Button("Record Song",
+                    ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
     double recordedQuality = player.CalcQuality();
 
-    songsMade.emplace_back(std::string(nameBuffer), player.name, 0.99f,
-                           recordedQuality, player.fans);
+    songsMade.emplace_back(std::string(nameBuffer), player.name, currentGenre,
+                           recordedQuality, player.fans,
+                           GetRecommendedPrice(recordedQuality, false));
 
-    gameLog.Add("Recorded: " + std::string(nameBuffer) +
-                " (Q: " + std::to_string((int)recordedQuality) + ")");
+    gameLog.Add("Recorded: " + std::string(nameBuffer) + " [" + currentGenre +
+                "] (Q: " + std::to_string((int)recordedQuality) + ")");
   }
 
   ImGui::Separator();
 
   // --- 3. Selection Synchronization ---
-  // This ensures our checkboxes always match the vault size
+  // Ensure the checkbox vector matches the number of songs
   static std::vector<bool> selectedSongs;
   if (selectedSongs.size() != songsMade.size()) {
     selectedSongs.resize(songsMade.size(), false);
   }
 
-  // --- 4. Album Workshop (Preview Logic) ---
+  // --- 4. ALBUM WORKSHOP (Restored Logic) ---
   ImGui::Text("Album Workshop");
   static char albumNameBuffer[128] = "New Album";
   ImGui::InputText("##albumname", albumNameBuffer,
                    IM_ARRAYSIZE(albumNameBuffer));
 
+  // Gather selected tracks
   std::vector<double> selectedQualities;
-  std::vector<int> selectedIndices; // Store indices to delete later
+  std::vector<int> selectedIndices;
+  std::string albumGenre = "Mixed";
 
   for (int i = 0; i < (int)songsMade.size(); ++i) {
     if (selectedSongs[i]) {
       selectedQualities.push_back(songsMade[i].quality);
       selectedIndices.push_back(i);
+      // Determine genre based on the first track selected (simple approach)
+      if (selectedIndices.size() == 1) {
+        albumGenre = songsMade[i].genre;
+      }
     }
   }
 
-  if (!selectedQualities.empty()) {
+  if (!selectedIndices.empty()) {
+    // Calculate Album Quality
     double estAlbumQual = player.CalcAlbumQuality(selectedQualities);
+
+    // Display Info
+    ImGui::Text("%zu Tracks selected.", selectedIndices.size());
     ImGui::TextColored(ImVec4(0, 1, 1, 1), "Est. Album Quality: %.1f",
                        estAlbumQual);
+    ImGui::Text("Genre: %s", albumGenre.c_str());
 
+    // Release Button
     if (ImGui::Button("Release Album",
                       ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+
+      // 1. Copy songs to a new vector for the album
       std::vector<Song> albumTracks;
       for (int idx : selectedIndices) {
         albumTracks.push_back(songsMade[idx]);
       }
-      auto AlbumGenre = GetAlbumGenre();
 
-      // Construct Album: Name, Artist, Tracks, Quality, Fans
+      // 2. Create the Album
+      // Constructor: Name, Artist, Genre, Tracks, Quality, Fans, Price
       albumsReleased.emplace_back(
-          std::string(albumNameBuffer), // _name
-          player.name,                  // _artist (Moved this here)
-          std::string(AlbumGenre),      // _genre  (Moved this here)
-          albumTracks,                  // _tracks
-          estAlbumQual,                 // _quality
-          player.fans,                  // _currentFans
-          GetRecommendedPrice(estAlbumQual,
-                              true) // _price (YOU WERE MISSING THIS!)
-      );
+          std::string(albumNameBuffer), player.name, albumGenre, albumTracks,
+          estAlbumQual, player.fans, GetRecommendedPrice(estAlbumQual, true));
+
+      // 3. Log it
       if (albumTracks.size() < 6) {
         gameLog.Add("Released EP: " + std::string(albumNameBuffer));
       } else {
         gameLog.Add("Released LP: " + std::string(albumNameBuffer));
       }
 
-      // CLEANUP: Remove songs and their selection states (Backwards to avoid
-      // index shifting)
+      // 4. CLEANUP: Remove songs from vault (Iterate BACKWARDS to avoid index
+      // shifting)
       for (int i = (int)selectedIndices.size() - 1; i >= 0; --i) {
         int targetIndex = selectedIndices[i];
         songsMade.erase(songsMade.begin() + targetIndex);
@@ -168,38 +198,43 @@ void DrawStudioWindow(Player &player, std::vector<Song> &songsMade,
       }
     }
   } else {
-    ImGui::TextDisabled("Select tracks in the vault to form an album...");
+    ImGui::TextDisabled("Select tracks in the vault below to form an album.");
   }
 
   ImGui::Separator();
 
-  // --- 5. The Vault (Display & Interaction) ---
+  // --- 5. The Vault ---
   ImGui::Text("The Vault (%zu songs)", songsMade.size());
 
   ImGui::BeginChild("VaultScroll", ImVec2(0, 300), true);
   for (size_t i = 0; i < songsMade.size();) {
     ImGui::PushID((int)i);
 
+    // Checkbox Logic
     bool isSelected = selectedSongs[i];
     if (ImGui::Checkbox("##sel", &isSelected)) {
       selectedSongs[i] = isSelected;
     }
 
     ImGui::SameLine();
-    ImGui::Text("%-20s | Q: %.1f", songsMade[i].name.c_str(),
-                songsMade[i].quality);
+    // Color code quality
+    ImVec4 qColor =
+        (songsMade[i].quality > 70) ? ImVec4(0, 1, 0, 1) : ImVec4(1, 1, 1, 1);
+    ImGui::TextColored(qColor, "%-15s [%s]", songsMade[i].name.c_str(),
+                       songsMade[i].genre.c_str());
+    ImGui::SameLine();
+    ImGui::Text("| Q: %.0f", songsMade[i].quality);
 
+    // Release Single Button
     ImGui::SameLine(ImGui::GetWindowWidth() - 120);
     if (ImGui::Button("Release Single")) {
       songsReleased.push_back(songsMade[i]);
       gameLog.Add("Released Single: " + songsMade[i].name);
 
-      // Sync erasure
       songsMade.erase(songsMade.begin() + i);
       selectedSongs.erase(selectedSongs.begin() + i);
-
       ImGui::PopID();
-      continue; // Don't increment i
+      continue;
     }
 
     ImGui::PopID();
