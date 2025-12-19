@@ -27,7 +27,7 @@ void DrawStudioWindow(Player &player, std::vector<Song> &songsMade,
                       std::vector<Album> &albumsReleased);
 
 void DrawAnalyticsWindow(const std::vector<Song> &songsReleased,
-                         std::vector<Album> &albumsReleased);
+                         const std::vector<Album> &albumsReleased);
 
 void DrawUpgradeWindow(const char *title, Player &player,
                        std::vector<std::pair<std::string, double>> &items);

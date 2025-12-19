@@ -210,7 +210,7 @@ void DrawStudioWindow(Player &player, std::vector<Song> &songsMade,
 }
 
 void DrawAnalyticsWindow(const std::vector<Song> &songsReleased,
-                         std::vector<Album> &albumsReleased) {
+                         const std::vector<Album> &albumsReleased) {
   if (ImGui::Begin("Charts & Analytics")) {
     if (songsReleased.empty() && albumsReleased.empty()) {
       ImGui::TextDisabled("No releases yet.");
@@ -225,54 +225,76 @@ void DrawAnalyticsWindow(const std::vector<Song> &songsReleased,
         ImGui::TableSetupColumn("Rev");
         ImGui::TableHeadersRow();
 
-        // --- SONGS (Iterate Backwards: Newest -> Oldest) ---
-        for (auto it = songsReleased.rbegin(); it != songsReleased.rend();
-             ++it) {
-          const auto &song = *it; // Access the song via the iterator
+        // 1. Setup Reverse Iterators (Start at the newest items)
+        auto s_it = songsReleased.rbegin();
+        auto s_end = songsReleased.rend();
+        auto a_it = albumsReleased.rbegin();
+        auto a_end = albumsReleased.rend();
+
+        // 2. Loop until both lists are exhausted
+        while (s_it != s_end || a_it != a_end) {
+          bool drawSong = false;
+
+          // DECISION LOGIC: Which one is newer?
+          if (s_it == s_end) {
+            drawSong = false; // No more songs, draw album
+          } else if (a_it == a_end) {
+            drawSong = true; // No more albums, draw song
+          } else {
+            // Both exist: Draw the one with LOWER lifeTime (Newer)
+            if (s_it->lifeTime < a_it->lifeTime) {
+              drawSong = true;
+            } else {
+              drawSong = false;
+            }
+          }
 
           ImGui::TableNextRow();
 
-          ImGui::TableSetColumnIndex(0);
-          ImGui::Text("Song: %s",
-                      song.name.c_str()); // Added label to distinguish
+          if (drawSong) {
+            // --- DRAW SONG ROW ---
+            const auto &song = *s_it;
 
-          ImGui::TableSetColumnIndex(1);
-          ImGui::ProgressBar(std::clamp((float)song.hype, 0.0f, 1.0f),
-                             ImVec2(-1, 0));
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("Song: %s", song.name.c_str());
 
-          ImGui::TableSetColumnIndex(2);
-          ImGui::Text("%d (+%d)", song.totalStreams, song.dailyStreams);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::ProgressBar(std::clamp((float)song.hype, 0.0f, 1.0f),
+                               ImVec2(-1, 0));
 
-          ImGui::TableSetColumnIndex(3);
-          ImGui::Text("%d", song.totalSales);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%d (+%d)", song.totalStreams, song.dailyStreams);
 
-          ImGui::TableSetColumnIndex(4);
-          ImGui::Text("$%.2f", song.earnings);
-        }
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text("%d", song.totalSales);
 
-        // --- ALBUMS (Iterate Backwards: Newest -> Oldest) ---
-        for (auto it = albumsReleased.rbegin(); it != albumsReleased.rend();
-             ++it) {
-          const auto &album = *it;
+            ImGui::TableSetColumnIndex(4);
+            ImGui::Text("$%.2f", song.earnings);
 
-          ImGui::TableNextRow();
+            ++s_it; // Move to next song
+          } else {
+            // --- DRAW ALBUM ROW ---
+            const auto &album = *a_it;
 
-          ImGui::TableSetColumnIndex(0);
-          ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Album: %s",
-                             album.name.c_str()); // Highlight albums
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Album: %s",
+                               album.name.c_str());
 
-          ImGui::TableSetColumnIndex(1);
-          ImGui::ProgressBar(std::clamp((float)album.hype, 0.0f, 1.0f),
-                             ImVec2(-1, 0));
+            ImGui::TableSetColumnIndex(1);
+            ImGui::ProgressBar(std::clamp((float)album.hype, 0.0f, 1.0f),
+                               ImVec2(-1, 0));
 
-          ImGui::TableSetColumnIndex(2);
-          ImGui::Text("%d (+%d)", album.totalStreams, album.dailyStreams);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%d (+%d)", album.totalStreams, album.dailyStreams);
 
-          ImGui::TableSetColumnIndex(3);
-          ImGui::Text("%d", album.totalSales);
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text("%d", album.totalSales);
 
-          ImGui::TableSetColumnIndex(4);
-          ImGui::Text("$%.2f", album.earnings);
+            ImGui::TableSetColumnIndex(4);
+            ImGui::Text("$%.2f", album.earnings);
+
+            ++a_it; // Move to next album
+          }
         }
 
         ImGui::EndTable();
