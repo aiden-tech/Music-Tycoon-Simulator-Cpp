@@ -1,114 +1,119 @@
-# CMake SFML Project Template
+# Music Tycoon Simulator (C++)
 
-This repository template should allow for a fast and hassle-free kick start of your next SFML project using CMake.
-Thanks to [GitHub's nature of templates](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template), you can fork this repository without inheriting its Git history.
+A simple 2D music tycoon where you play as an artist who makes songs in a chosen genre and slowly grows over time by upgrading skills and studio tools. The project is written in C++ and uses CMake, SFML, and Dear ImGui (ImGui-SFML).
 
-The template starts out very basic, but might receive additional features over time:
 
-- Basic CMake script to build your project and link SFML on any operating system
-- Basic [GitHub Actions](https://github.com/features/actions) script for all major platforms
+---
 
-## Quick start
+Table of contents
+- About
+- Key features
+- Build requirements
+- Build & run
+- Project layout & sources
+- How to play
+- Contributing
+- Roadmap
+- Contact
 
-### Command line
+About
+-----
+Music Tycoon Simulator puts you in the role of an artist. Choose a genre, create and release songs, and grow your career by investing in personal skill upgrades and studio tool upgrades. Progression happens over time as you manage production and growth decisions.
 
-1. Install [Git](https://git-scm.com/downloads) and [CMake](https://cmake.org/download/). Use your system's package manager if available.
-2. Follow [GitHub's instructions](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template) for how to use their project template feature to create your own project. If you don't want to use GitHub, see the section below.
-3. Clone your new GitHub repo and open the repo in your text editor of choice.
-4. Open [CMakeLists.txt](CMakeLists.txt). Rename the project and the target name of the executable to whatever name you want. Make sure to change all occurrences.
-5. If you want to add or remove any .cpp files, change the source files listed in the `add_executable` call in CMakeLists.txt to match the source files your project requires. If you plan on keeping the default main.cpp file then no changes are required.
-6. If your code uses the Audio or Network modules then add `SFML::Audio` or `SFML::Network` to the `target_link_libraries` call alongside the existing `SFML::Graphics` library that is being linked.
-7. If you use Linux, install SFML's dependencies using your system package manager. On Ubuntu and other Debian-based distributions you can use the following commands:
-   ```
-   sudo apt update
-   sudo apt install \
-       libxrandr-dev \
-       libxcursor-dev \
-       libxi-dev \
-       libudev-dev \
-       libfreetype-dev \
-       libflac-dev \
-       libvorbis-dev \
-       libgl1-mesa-dev \
-       libegl1-mesa-dev \
-       libfreetype-dev
-   ```
-8. Configure and build your project. Most popular IDEs support CMake projects with very little effort on your part.
+Key features (what the repo implements)
+-----
+- Single-player progression: make songs, release them, and improve your artist.
+- Upgrade mechanics for skills and studio tools.
+- Desktop application built with SFML for rendering/audio and Dear ImGui for UI (ImGui-SFML integration).
 
-   - [VS Code](https://code.visualstudio.com) via the [CMake extension](https://code.visualstudio.com/docs/cpp/cmake-linux)
-   - [Visual Studio](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio?view=msvc-170)
-   - [CLion](https://www.jetbrains.com/clion/features/cmake-support.html)
-   - [Qt Creator](https://doc.qt.io/qtcreator/creator-project-cmake.html)
+Build requirements
+-----
+The repository's CMake configuration specifies the following requirements (these are taken directly from the project's CMakeLists.txt):
 
-   Using CMake from the command line is straightforward as well.
-   Be sure to run these commands in the root directory of the project you just created.
+- CMake minimum required: 3.28
+- C++ standard: C++20
+- Network access at configure time is required if relying on CMake FetchContent (the project fetches SFML, Dear ImGui, and ImGui-SFML automatically).
+- A C++20-capable compiler (examples: recent GCC, Clang, or MSVC).
 
-   ```
-   cmake -B build
-   cmake --build build
-   ```
+Notes about dependencies
+- The CMake configuration fetches:
+  - SFML v3.0.2 from https://github.com/SFML/SFML
+  - Dear ImGui v1.91.5 from https://github.com/ocornut/imgui
+  - ImGui-SFML v3.0 from https://github.com/SFML/imgui-sfml
+- The build links ImGui-SFML::ImGui-SFML and SFML::Graphics / SFML::Window / SFML::System.
+- If you prefer to use system-installed SFML/ImGui instead of FetchContent, update the CMakeLists.txt accordingly.
 
-9. Enjoy!
+Build & run
+-----
+The project produces an executable target named `MusicTycoonApp` and places runtime binaries in the CMake binary directory under `bin/` (CMAKE_RUNTIME_OUTPUT_DIRECTORY).
 
-### Visual Studio
+Typical out-of-source CMake workflow:
 
-Using a Visual Studio workspace is the simplest way to get started on windows.
+1. Clone the repository
+   git clone https://github.com/aiden-tech/Music-Tycoon-Simulator-Cpp.git
+   cd Music-Tycoon-Simulator-Cpp
 
-1. Ensure you have the [required components installed](https://learn.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio#installation).
-2. Follow [GitHub's instructions](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template) for how to use their project template feature to create your own project.
-3. If you have already cloned this repo, you can [open the folder](https://learn.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio0#ide-integration).
-4. If not, you can [clone it directly in Visual Studio](https://learn.microsoft.com/en-us/visualstudio/get-started/tutorial-open-project-from-repo).
+2. Create and enter a build directory:
+   mkdir -p build
+   cd build
 
-Visual Studio should automatically configure the CMake project, then you can build and run as normal through Visual Studio. See the links above for more details.
+3. Configure with CMake:
+   cmake .. -DCMAKE_BUILD_TYPE=Release
 
-## Upgrading SFML
+   - This project uses FetchContent to download SFML, ImGui and ImGui-SFML during configure if those libraries are not already available.
+   - If your environment cannot download dependencies during configure, install SFML and ImGui system-wide and adjust CMakeLists.txt or your CMake cache accordingly.
 
-SFML is found via CMake's [FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html) module.
-FetchContent automatically downloads SFML from GitHub and builds it alongside your own code.
-Beyond the convenience of not having to install SFML yourself, this ensures ABI compatibility and simplifies things like specifying static versus shared libraries.
+4. Build:
+   cmake --build . --config Release
 
-Modifying what version of SFML you want is as easy as changing the `GIT_TAG` argument.
-Currently it uses SFML 3 via the `3.0.2` tag.
+5. Run:
+   - The produced executable will be at:
+     ./bin/MusicTycoonApp   (on Linux / macOS)
+     .\bin\MusicTycoonApp.exe (on Windows)
+   - If your build tool or OS places binaries elsewhere, run the produced executable accordingly.
 
-## But I want to...
+Project layout & sources
+-----
+Sources referenced in the CMake configuration (these filenames are in the repository and used to build the executable):
 
-Modify CMake options by adding them as configuration parameters (with a `-D` flag) or by modifying the contents of CMakeCache.txt and rebuilding.
+- src/main.cpp
+- src/song.cpp
+- src/album.cpp
+- src/graphics.cpp
+- src/simulation.cpp
+- src/helper.cpp
+- src/player.cpp
 
-### Not use GitHub
+CMakeLists notes:
+- The project sets `CMAKE_CXX_STANDARD` to 20 and `CMAKE_EXPORT_COMPILE_COMMANDS ON`.
+- Runtime binaries are written to `${CMAKE_BINARY_DIR}/bin`.
+- ImGui integration is done via ImGui-SFML and the CMake config ensures ImGui-SFML uses the fetched SFML.
 
-You can use this project without a GitHub account by [downloading the contents](https://github.com/SFML/cmake-sfml-project/archive/refs/heads/master.zip) of the repository as a ZIP archive and unpacking it locally.
-This approach also avoids using Git entirely if you would prefer to not do that.
+How to play (concise, non-speculative)
+-----
+- You play as an artist who picks a genre and writes/releases songs.
+- You improve over time by upgrading personal skills and studio tools.
+- The core loop is: create songs → release/promote → earn progression → spend on upgrades → repeat.
 
-### Change Compilers
+(Controls, UI specifics, save/load behavior, and exact metrics are intentionally not expanded here to avoid inventing details. Document controls or gameplay parameters in-game or by adding a short HOWTO.md if you want those included.)
 
-See the variety of [`CMAKE_<LANG>_COMPILER`](https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_COMPILER.html) options.
-In particular you'll want to modify `CMAKE_CXX_COMPILER` to point to the C++ compiler you wish to use.
+Contributing
+-----
+Contributions are welcome. A suggested workflow:
 
-### Change Compiler Optimizations
+1. Fork the repository.
+2. Create a branch: git checkout -b feat/your-feature
+3. Implement changes and test them locally.
+4. Open a pull request describing what you changed and why.
 
-CMake abstracts away specific optimizer flags through the [`CMAKE_BUILD_TYPE`](https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html) option.
-By default this project recommends `Release` builds which enable optimizations.
-Other build types include `Debug` builds which enable debug symbols but disable optimizations.
-If you're using a multi-configuration generator (as is often the case on Windows), you can modify the [`CMAKE_CONFIGURATION_TYPES`](https://cmake.org/cmake/help/latest/variable/CMAKE_CONFIGURATION_TYPES.html#variable:CMAKE_CONFIGURATION_TYPES) option.
+If you want a CONTRIBUTING.md or specific code style rules, add them to the repository and mention them here.
 
-### Change Generators
+Roadmap 
+-----
+Planing too add a shop into the game, add more song genres, improve balancing, better game loop, improve ui, and just add too everything in general
 
-While CMake will attempt to pick a suitable default generator, some systems offer a number of generators to choose from.
-Ubuntu, for example, offers Makefiles and Ninja as two potential options.
-For a list of generators, click [here](https://cmake.org/cmake/help/latest/manual/cmake-generators.7.html).
-To modify the generator you're using you must reconfigure your project providing a `-G` flag with a value corresponding to the generator you want.
-You can't simply modify an entry in the CMakeCache.txt file unlike the above options.
-Then you may rebuild your project with this new generator.
+Contact
+-----
+Created by Aiden (aiden-tech). For questions open an issue in this repository.
 
-## More Reading
-
-Here are some useful resources if you want to learn more about CMake:
-
-- [Official CMake Tutorial](https://cmake.org/cmake/help/latest/guide/tutorial/)
-- [How to Use CMake Without the Agonizing Pain - Part 1](https://alexreinking.com/blog/how-to-use-cmake-without-the-agonizing-pain-part-1.html)
-- [How to Use CMake Without the Agonizing Pain - Part 2](https://alexreinking.com/blog/how-to-use-cmake-without-the-agonizing-pain-part-2.html)
-- [Better CMake YouTube series by Jefferon Amstutz](https://www.youtube.com/playlist?list=PL8i3OhJb4FNV10aIZ8oF0AA46HgA2ed8g)
-
-## License
-
-The source code is dual licensed under Public Domain and MIT -- choose whichever you prefer.
+---
