@@ -17,7 +17,7 @@
 
 int main() {
   // SFML 3.0 Window Creation
-  sf::RenderWindow window(sf::VideoMode({1280, 800}), "Music Tycoon 2025");
+  sf::RenderWindow window(sf::VideoMode({1800, 800}), "Music Tycoon 2025");
   window.setFramerateLimit(60);
 
   if (!ImGui::SFML::Init(window))

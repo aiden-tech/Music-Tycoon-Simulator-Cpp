@@ -85,6 +85,9 @@ void DrawStudioWindow(Player &player, std::vector<Song> &songsMade,
   ImGui::SameLine(ImGui::GetWindowWidth() - 220);
   std::string repText = "Reputation: " + std::to_string(player.reputation);
   ImGui::Text("Reputation: %.2f", player.reputation);
+
+  std::string EnergyText = "Energy: " + std::to_string(player.Energy);
+  ImGui::Text("Energy: %.2f", player.Energy);
   ImGui::Separator();
 
   // --- 2. Recording Logic ---
@@ -121,13 +124,19 @@ void DrawStudioWindow(Player &player, std::vector<Song> &songsMade,
   if (ImGui::Button("Record Song",
                     ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
     double recordedQuality = player.CalcQuality();
+    if (player.Energy >= 5.0) {
 
-    songsMade.emplace_back(std::string(nameBuffer), player.name, currentGenre,
-                           recordedQuality, player.fans,
-                           GetRecommendedPrice(recordedQuality, false));
+      player.Energy -= 5.0;
 
-    gameLog.Add("Recorded: " + std::string(nameBuffer) + " [" + currentGenre +
-                "] (Q: " + std::to_string((int)recordedQuality) + ")");
+      songsMade.emplace_back(std::string(nameBuffer), player.name, currentGenre,
+                             recordedQuality, player.fans,
+                             GetRecommendedPrice(recordedQuality, false));
+
+      gameLog.Add("Recorded: " + std::string(nameBuffer) + " [" + currentGenre +
+                  "] (Q: " + std::to_string((int)recordedQuality) + ")");
+    } else {
+      gameLog.Add("Not enough energy to record song.");
+    }
   }
 
   ImGui::Separator();
@@ -180,26 +189,31 @@ void DrawStudioWindow(Player &player, std::vector<Song> &songsMade,
       for (int idx : selectedIndices) {
         albumTracks.push_back(songsMade[idx]);
       }
+      if (player.Energy >= 10.0) {
+        player.Energy -= 10.0;
 
-      // 2. Create the Album
-      // Constructor: Name, Artist, Genre, Tracks, Quality, Fans, Price
-      albumsReleased.emplace_back(
-          std::string(albumNameBuffer), player.name, albumGenre, albumTracks,
-          estAlbumQual, player.fans, GetRecommendedPrice(estAlbumQual, true));
+        // 2. Create the Album
+        // Constructor: Name, Artist, Genre, Tracks, Quality, Fans, Price
+        albumsReleased.emplace_back(
+            std::string(albumNameBuffer), player.name, albumGenre, albumTracks,
+            estAlbumQual, player.fans, GetRecommendedPrice(estAlbumQual, true));
 
-      // 3. Log it
-      if (albumTracks.size() < 6) {
-        gameLog.Add("Released EP: " + std::string(albumNameBuffer));
+        // 3. Log it
+        if (albumTracks.size() < 6) {
+          gameLog.Add("Released EP: " + std::string(albumNameBuffer));
+        } else {
+          gameLog.Add("Released LP: " + std::string(albumNameBuffer));
+        }
+
+        // 4. CLEANUP: Remove songs from vault (Iterate BACKWARDS to avoid index
+        // shifting)
+        for (int i = (int)selectedIndices.size() - 1; i >= 0; --i) {
+          int targetIndex = selectedIndices[i];
+          songsMade.erase(songsMade.begin() + targetIndex);
+          selectedSongs.erase(selectedSongs.begin() + targetIndex);
+        }
       } else {
-        gameLog.Add("Released LP: " + std::string(albumNameBuffer));
-      }
-
-      // 4. CLEANUP: Remove songs from vault (Iterate BACKWARDS to avoid index
-      // shifting)
-      for (int i = (int)selectedIndices.size() - 1; i >= 0; --i) {
-        int targetIndex = selectedIndices[i];
-        songsMade.erase(songsMade.begin() + targetIndex);
-        selectedSongs.erase(selectedSongs.begin() + targetIndex);
+        gameLog.Add("Not enough energy to release album.");
       }
     }
   } else {
