@@ -2,6 +2,7 @@
 #include "../headers/helper.h"
 #include "../headers/simulation.h"
 #include "imgui.h"
+#include <cstddef>
 #include <memory>
 
 EventLog gameLog;
@@ -80,6 +81,9 @@ void DrawStudioWindow(Player &player, std::vector<Song> &songsMade,
   ImGui::Text("%s", fanText.c_str());
 
   ImGui::Text("Money: $%.2f", player.money);
+  ImGui::SameLine(ImGui::GetWindowWidth() - 220);
+  std::string repText = "Reputation: " + std::to_string(player.reputation);
+  ImGui::Text("Reputation: %.2f", player.reputation);
   ImGui::Separator();
 
   // --- 2. Recording Logic ---

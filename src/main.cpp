@@ -64,6 +64,9 @@ int main() {
       SimulateEconomy(songsReleased, albumsReleased, player, dt,
                       globalTickTimer);
 
+      bool updated = UpdateReputation(player, songsReleased, albumsReleased,
+                                      globalTickTimer);
+
       // Clean up old songs (C++20 erase_if)
       std::erase_if(songsReleased, [](const Song &s) {
         return s.lifeTime >= EconomyConfig::SONG_LIFETIME.asSeconds();

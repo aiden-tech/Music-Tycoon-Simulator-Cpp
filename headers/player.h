@@ -7,7 +7,10 @@
 struct Player {
   std::string name;
   int fans = 100;
+  double reputation = 0.0;
   double money = 50.0;
+
+  float repUpdateAccumulator = 0.0f;
 
   // Skill Name, Level
   std::vector<std::pair<std::string, double>> skills = {

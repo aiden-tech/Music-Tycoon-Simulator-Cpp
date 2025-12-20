@@ -11,6 +11,10 @@ void UpdateFanbase(Player &player, int streams, double songQuality,
 
 std::pair<float, std::string> GetMarketTrend(std::shared_ptr<float> tickTimer);
 
+bool UpdateReputation(Player &player, const std::vector<Song> &songs,
+                      const std::vector<Album> &albums,
+                      const std::shared_ptr<float> &deltaTimePtr);
+
 void SimulateEconomy(std::vector<Song> &songs, std::vector<Album> &albums,
                      Player &player, sf::Time dt,
                      std::shared_ptr<float> tickTimer);

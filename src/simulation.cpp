@@ -71,6 +71,59 @@ void UpdateFanbase(Player &player, int streams, double songQuality,
     player.fans = 0;
 }
 
+// Returns true if an update occurred (useful for triggering UI sounds/visuals)
+bool UpdateReputation(Player &player, const std::vector<Song> &songs,
+                      const std::vector<Album> &albums,
+                      const std::shared_ptr<float> &deltaTimePtr) {
+
+  // 1. Safety Checks
+  if (!deltaTimePtr)
+    return false;
+
+  // 2. Accumulate Time
+  // We strictly READ from the shared pointer. We do not reset it.
+  player.repUpdateAccumulator += *deltaTimePtr;
+
+  // 3. Check Cycle
+  if (player.repUpdateAccumulator >= EconomyConfig::REP_CYCLE) {
+
+    // Reset local accumulator, keeping the remainder for time precision
+    // (e.g., if we overshoot by 0.01s, we keep it for the next cycle)
+    player.repUpdateAccumulator -= EconomyConfig::REP_CYCLE;
+
+    // Optimization: Early exit if inventory is empty
+    if (songs.empty() && albums.empty()) {
+      player.reputation = 0.0;
+      return true;
+    }
+
+    // 4. Calculate using C++20 Ranges (Clean & readable)
+    // We project the 'quality' member and sum it up.
+
+    // Sum Songs
+    double songScore = 0.0;
+    for (const auto &song : songs) {
+      songScore += song.quality;
+    }
+
+    // Sum Albums
+    double albumScore = 0.0;
+    for (const auto &album : albums) {
+      albumScore += album.quality;
+    }
+
+    // 5. Apply Logic
+    // Combine, normalize (divide by 100), and clamp
+    double rawReputation = (songScore + albumScore) / 100.0;
+
+    player.reputation = std::clamp(rawReputation, 0.0, 5.0);
+
+    return true; // Indicate that values changed
+  }
+
+  return false; // No update this frame
+}
+
 std::pair<float, std::string> GetMarketTrend(std::shared_ptr<float> tickTimer) {
   // 1. Safety check
   if (!tickTimer)
