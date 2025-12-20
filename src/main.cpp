@@ -83,6 +83,7 @@ int main() {
 
       DrawUpgradeWindow("Skills", player, player.skills);
       DrawUpgradeWindow("Studio Gear", player, player.studio_tools);
+      DrawActionsWindow(player);
 
       // 5. DRAW LOG WINDOW (Fixed typo: gamelog -> gameLog)
       gameLog.DrawWindow(dt, globalTickTimer);

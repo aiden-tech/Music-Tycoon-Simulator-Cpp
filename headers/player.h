@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -9,6 +10,7 @@ struct Player {
   int fans = 100;
   double reputation = 0.0;
   double money = 50.0;
+  double Energy = std::clamp(100.0, 0.0, 100.0);
 
   float repUpdateAccumulator = 0.0f;
 
@@ -32,4 +34,8 @@ struct Player {
 
   // 3. ALBUM AGGREGATION
   double CalcAlbumQuality(const std::vector<double> &songQualities);
+
+  double Busk(double TimeBusking);
+
+  double Rest();
 };

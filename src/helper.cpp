@@ -23,6 +23,11 @@ int Int(int min, int max) {
   return dist(mt);
 }
 
+double Double(double min, double max) {
+  std::uniform_real_distribution<double> dist(min, max);
+  return dist(mt);
+}
+
 bool Chance(double probability01) {
   std::bernoulli_distribution dist(probability01);
   return dist(mt);

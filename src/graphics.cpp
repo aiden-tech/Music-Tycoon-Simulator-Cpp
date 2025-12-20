@@ -2,6 +2,7 @@
 #include "../headers/helper.h"
 #include "../headers/simulation.h"
 #include "imgui.h"
+#include "imgui_internal.h"
 #include <cstddef>
 #include <memory>
 
@@ -435,5 +436,27 @@ void DrawMainMenu(GameState &state, Player &player) {
     exit(0);
   }
 
+  ImGui::End();
+}
+
+void DrawActionsWindow(Player &player) {
+
+  static float timeBusking = 0.0;
+  auto SliderSize = ImVec2(35.0f, 150.0f);
+
+  if (ImGui::Begin("Actions")) {
+    ImGui::Text("Possible Actions");
+    ImGui::Separator();
+
+    if (ImGui::Button("Start Busking")) {
+      player.Busk(timeBusking);
+    }
+    ImGui::SameLine();
+    ImGui::VSliderFloat("Time Busking", SliderSize, &timeBusking, 0.0f, 120.0f);
+
+    if (ImGui::Button("Rest")) {
+      player.Rest();
+    }
+  }
   ImGui::End();
 }

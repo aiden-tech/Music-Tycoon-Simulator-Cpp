@@ -1,6 +1,10 @@
 #include "../headers/player.h"
+#include "../headers/graphics.h"
+#include "../headers/helper.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <format>
 #include <numeric>
 #include <random>
 
@@ -202,4 +206,51 @@ double Player::CalcAlbumQuality(const std::vector<double> &songQualities) {
   }
 
   return std::clamp(finalQuality, 1.0, 100.0);
+}
+
+double Player::Busk(double requestedTime) {
+  auto moneyMade = 0.0;
+  auto timeSpent = 0.0;
+  auto energyCost = 0.0;
+
+  // 1. Determine the appropriate duration and energy cost based on the
+  // requested time
+  if (requestedTime >= 120.0) {
+    timeSpent = 120.0;
+    energyCost = 25.0;
+  } else if (requestedTime >= 90.0) {
+    timeSpent = 90.0;
+    energyCost = 15.0;
+  } else if (requestedTime >= 60.0) {
+    timeSpent = 60.0;
+    energyCost = 10.0;
+  } else if (requestedTime >= 30.0) {
+    timeSpent = 30.0;
+    energyCost = 5.0;
+  } else {
+    // Handle cases where time is less than 30 mins
+    gameLog.Add("Please use game slider to set time busking (min 30 mins).");
+    return money; // Return existing money, make no changes
+  }
+
+  // 2. Check if the player has enough energy for the determined action
+  if (Energy >= energyCost) {
+    Energy -= energyCost;
+    auto luck = Random::Double(0.1, 0.3);
+    moneyMade = timeSpent * luck * 2.0;
+    gameLog.Add("Busked for " + std::format("{:.2f}", requestedTime) +
+                " minutes.");
+  } else {
+    gameLog.Add("Not enough energy to busk for " + std::to_string(timeSpent) +
+                " mins!");
+  }
+
+  // 3. Update total money and return the new total
+  money += moneyMade;
+  return money;
+}
+
+double Player::Rest() {
+  Energy += 100.0;
+  return Energy;
 }
