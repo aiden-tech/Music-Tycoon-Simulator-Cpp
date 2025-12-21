@@ -17,60 +17,91 @@
 // --- CORE SIMULATION LOGIC ---
 void UpdateFanbase(Player &player, int streams, double songQuality,
                    double hype) {
-  // --- A. Base Conversion (Getting new listeners) ---
-  // A "Good" song (70+) converts 1% of listeners.
-  // A "Masterpiece" (95+) converts 2.5%.
-  // A "Bad" song (<40) converts 0%.
-  double qualityFactor =
-      std::max(0.0, (songQuality - 40.0) / 40.0); // Normalized 0.0 to 1.5
-  double baseConversionRate = 0.008;              // 0.8% base chance
+  // 1. Safety & Triviality Check
+  if (streams <= 0)
+    return;
 
-  // --- B. Saturation Logic (Diminishing Returns) ---
-  // It's easy to get your first 1,000 fans. Hard to get your 100 millionth.
+  // -------------------------------------------------------------------------
+  // A. REPUTATION DYNAMICS
+  // -------------------------------------------------------------------------
+  double repChange = 0.0;
+  if (songQuality >= 75.0) {
+    repChange = (songQuality - 70.0) * 0.005 * hype;
+  } else if (songQuality <= 45.0) {
+    repChange = -(50.0 - songQuality) * 0.02 * hype;
+  }
+  player.reputation = std::clamp(player.reputation + repChange, 0.0, 1000.0);
+
+  // -------------------------------------------------------------------------
+  // B. MARKET SATURATION (Calculated early for use in conversion)
+  // -------------------------------------------------------------------------
+  // As you get bigger, it becomes harder to convince the remaining population.
   double saturation = 1.0;
-  if (player.fans > 1000) {
-    // Logarithmic curve: slows down growth significantly as you get huge
-    saturation = 1.0 / (std::log10(player.fans) - 1.5);
-    // Example: 10k fans -> saturation ~0.4
-    // Example: 1M fans  -> saturation ~0.2
-  }
-  // Clamp saturation so it never breaks math (min 0.05)
-  saturation = std::clamp(saturation, 0.05, 1.0);
-
-  // --- C. Calculate New Fans ---
-  // Formula: Streams * (Base Rate * QualityBonus) * MarketHype * Saturation
-  double rawNewFans = streams * (baseConversionRate * qualityFactor) *
-                      std::max(0.5, hype) * saturation;
-  int newFans = static_cast<int>(rawNewFans);
-
-  // --- D. The "Viral" Lottery ---
-  // Small chance for massive explosive growth (TikTok/Shorts effect)
-  // Higher hype = higher chance.
-  if (hype > 0.5 && Random::Chance(0.001 * hype)) { // 0.1% chance per tick
-    int viralSpike = static_cast<int>(streams * (songQuality / 10.0));
-    newFans += viralSpike;
-    // Add a distinct notification so the player knows WHY they jumped
-    gameLog.Add("VIRAL HIT! Gained " + std::to_string(viralSpike) +
-                " fans instantly!");
+  if (player.fans > 1000000) {
+    double logFans = std::log10(static_cast<double>(player.fans));
+    // Logistic damping: 1M fans -> ~0.33 multiplier
+    saturation = std::clamp(1.0 / (logFans - 3.0), 0.01, 1.0);
   }
 
-  // --- E. Churn (Losing Fans) ---
-  // You always lose a tiny bit of fans (people lose interest).
-  // Low quality releases accelerate this.
-  double churnRate =
-      0.0001 / player.reputation; // 0.01% natural daily churn / rep factor
-  if (songQuality < 40.0)
-    churnRate += 0.005 / player.reputation; // 0.5% penalty for bad songs
-  if (hype < 0.1)
-    churnRate += 0.001 / player.reputation; // Penalty for being inactive
+  // -------------------------------------------------------------------------
+  // C. CONVERSION LOGIC (The Fix)
+  // -------------------------------------------------------------------------
+  double conversionChance = 0.0;
 
-  int lostFans = static_cast<int>(player.fans * churnRate);
+  // FIX: Lower threshold from 50.0 to 10.0 so beginners can gain fans
+  if (songQuality > 10.0) {
+    // Base chance (0.2%) + Curve based on quality
+    // Quality 20 -> ~0.2%
+    // Quality 90 -> ~3.0%
+    conversionChance =
+        0.002 + (std::pow((songQuality - 10.0) / 90.0, 2.5) * 0.035);
+  }
 
-  // --- F. Apply & Ensure Safety ---
+  // Reputation Bonus
+  double trustFactor = 1.0 + (player.reputation / 200.0);
+
+  // Calculate theoretical fans (Float precision)
+  double theoreticalNewFans =
+      streams * conversionChance * trustFactor * saturation;
+
+  // FIX: Probabilistic Rounding
+  // Separate the whole number from the decimal
+  int newFans = static_cast<int>(theoreticalNewFans);
+  double remainder = theoreticalNewFans - newFans;
+
+  // Roll for the remainder. If theoretical is 0.4, there is a 40% chance to get
+  // 1 fan.
+  if (Random::Double(0.0, 1.0) < remainder) {
+    newFans += 1;
+  }
+
+  // -------------------------------------------------------------------------
+  // D. VIRAL MECHANICS
+  // -------------------------------------------------------------------------
+  if (hype > 2.0 && songQuality > 80.0) {
+    // 0.2% chance per tick
+    if (Random::Chance(0.002)) {
+      int viralSpike = static_cast<int>(streams * Random::Double(0.5, 2.0));
+      newFans += viralSpike;
+      gameLog.Add("VIRAL SENSATION! " + std::to_string(viralSpike) +
+                  " new fans!");
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // E. BACKLASH (Reactionary Churn)
+  // -------------------------------------------------------------------------
+  int angryFans = 0;
+  if (player.fans > 1000 && songQuality < 15.0) {
+    double disappointmentRate = (40.0 - songQuality) * 0.0005;
+    angryFans = static_cast<int>(player.fans * disappointmentRate);
+  }
+
+  // -------------------------------------------------------------------------
+  // F. APPLY FINAL VALUES
+  // -------------------------------------------------------------------------
   player.fans += newFans;
-  player.fans -= lostFans;
-  if (player.fans < 0)
-    player.fans = 0;
+  player.fans = std::max(0, player.fans - angryFans);
 }
 
 // Returns true if an update occurred (useful for triggering UI sounds/visuals)
@@ -198,140 +229,218 @@ GetMarketTrend(std::shared_ptr<float> tickTimer) {
 
 void SimulateEconomy(std::vector<Song> &songs, std::vector<Album> &albums,
                      Player &player, sf::Time dt,
-                     std::shared_ptr<float> tickTimer) {
+                     std::shared_ptr<float> globalClock) {
 
-  if (songs.empty() && albums.empty())
+  if ((songs.empty() && albums.empty()) || !globalClock)
     return;
 
-  // 1. Update lifetimes (every frame)
+  // -------------------------------------------------------------------------
+  // 1. GLOBAL TIME & MARKET TRACKING
+  // -------------------------------------------------------------------------
+
+  // Increment the Global Clock (used for Market Trends ~45s cycles)
+  *globalClock += dt.asSeconds();
+
+  // Update Lifetime for all items
   for (auto &song : songs)
     song.lifeTime += dt.asSeconds();
   for (auto &album : albums)
     album.lifeTime += dt.asSeconds();
 
-  // 2. IMPORTANT: Get market trend ONCE per frame, not per song
-  // This prevents the "Reset Bug"
-  auto [trendMultiplier, trendingGenre] = GetMarketTrend(tickTimer);
+  // Check Market Trend (Once per frame to ensure UI updates, but logic changes
+  // slowly) We pass the globalClock to the trend manager.
+  auto [trendMultiplier, trendingGenre] = GetMarketTrend(globalClock);
 
-  // 3. Increment the shared timer
-  *tickTimer += dt.asSeconds();
+  // -------------------------------------------------------------------------
+  // 2. ECONOMY TICK ACCUMULATOR
+  // -------------------------------------------------------------------------
+  // We use a local static accumulator so we don't reset the GlobalClock
+  // which is needed for the 45-second trend cycles.
+  static float economyAccumulator = 0.0f;
+  economyAccumulator += dt.asSeconds();
 
-  // 4. Run Economics at fixed tick rate
-  if (*tickTimer >= EconomyConfig::ECONOMY_TICK_RATE) {
-
-    for (auto &song : songs) {
-      if (song.hype <= 0.01f) {
-        song.dailyStreams = 0;
-        continue;
-      }
-
-      // Calculation Logic
-      double fairPrice = GetRecommendedPrice(song.quality, false);
-      double priceRatio = fairPrice / std::max(0.01, (double)song.price);
-      double demandMultiplier = std::clamp(
-          std::pow(priceRatio, EconomyConfig::PRICE_ELASTICITY), 0.0, 3.0);
-
-      // Market Trend logic
-      float activeBonus = 1.0f;
-      if (song.genre == trendingGenre) {
-        activeBonus += trendMultiplier; // Bonus boost
-      }
-
-      double baseDiscovery = Random::Normal(50.0, 15.0);
-      double fanReach = player.fans * 0.05;
-      double potentialListeners = (baseDiscovery + fanReach) * song.hype;
-      double retention = std::clamp(song.quality / 10.0, 0.1, 1.2);
-      double repMultiplier = Random::Double(0.0, player.reputation) / 100.0;
-
-      int actualStreams =
-          static_cast<int>(potentialListeners * retention * demandMultiplier *
-                           activeBonus * repMultiplier);
-
-      // Sales
-      double saleProb =
-          (1.0 / 800.0) * demandMultiplier * (song.quality / 10.0);
-      int newSales = static_cast<int>(actualStreams * saleProb);
-      if (newSales < 0)
-        newSales = 0;
-
-      // Financials
-      double streamRev = actualStreams * EconomyConfig::STREAM_PAYOUT_RATE;
-      double salesRev = newSales * song.price;
-      player.money += (streamRev + salesRev);
-
-      // Stats Update
-      song.dailyStreams = actualStreams;
-      song.totalStreams += actualStreams;
-      song.totalSales += newSales;
-      song.earnings += (streamRev + salesRev);
-
-      // Feedback & Decay
-      UpdateFanbase(player, actualStreams, song.quality, song.hype);
-
-      double decay =
-          (song.quality > 70.0) ? 0.99 : 0.96; // Higher quality lasts longer
-      song.hype *= decay;
-    }
-
-    // --- PART B: ALBUMS SIMULATION ---
-    for (auto &album : albums) {
-      if (album.hype <= 0.01f) {
-        album.dailyStreams = 0;
-        continue;
-      }
-
-      double fairPrice = GetRecommendedPrice(album.quality, true);
-      double priceRatio = fairPrice / std::max(0.01, album.price);
-      double demandMultiplier = std::clamp(
-          std::pow(priceRatio, EconomyConfig::PRICE_ELASTICITY), 0.0, 3.0);
-
-      // Albums have higher discovery and fan reach than singles
-      double baseDiscovery = Random::Normal(100.0, 30.0);
-      double fanReach = player.fans * 0.12;
-      double potentialListeners = (baseDiscovery + fanReach) * album.hype;
-      double retention = std::clamp(album.quality / 10.0, 0.1, 1.2);
-
-      int actualStreams =
-          static_cast<int>(potentialListeners * retention * demandMultiplier);
-
-      // Album sales are harder to get than song sales
-      double saleProb =
-          (1.0 / 1200.0) * demandMultiplier * (album.quality / 10.0);
-      int newSales = static_cast<int>(actualStreams * saleProb);
-
-      // Financials
-      double streamRev = actualStreams * EconomyConfig::STREAM_PAYOUT_RATE;
-      double salesRev = newSales * album.price;
-      player.money += (streamRev + salesRev);
-
-      // Stats Update
-      album.dailyStreams = actualStreams;
-      album.totalStreams += actualStreams;
-      album.totalSales += newSales;
-      album.earnings += (streamRev + salesRev);
-
-      // Feedback & Decay
-      UpdateFanbase(player, actualStreams, album.quality, album.hype);
-
-      // Albums decay slightly slower than singles (more staying power)
-      double decay = (album.quality > 70.0) ? 0.995 : 0.98;
-      album.hype *= decay;
-    }
-
-    // ADD THIS AT THE BOTTOM OF THE TICK BLOCK:
-    // Natural Churn (only once per tick, not once per song)
-    double baseChurn = (player.fans > 100000) ? 0.001 : 0.0005;
-    int lostFans = static_cast<int>(player.fans * baseChurn);
-
-    // Scandal logic moved here too so it only triggers once per tick
-    if (Random::Chance(0.002)) { // Reduced probability since it's per-tick now
-      int scandalLoss = static_cast<int>(player.fans * 0.03);
-      player.fans -= scandalLoss;
-      gameLog.Add("Scandal: Fans are leaving!");
-    }
-
-    player.fans = std::max(0, player.fans - lostFans);
-
-    *tickTimer = 0.0f;
+  // If we haven't reached the "End of Day" (Tick Rate), exit.
+  if (economyAccumulator < EconomyConfig::ECONOMY_TICK_RATE) {
+    return;
   }
+
+  // Reset accumulator but keep the overshoot for time precision
+  economyAccumulator -= EconomyConfig::ECONOMY_TICK_RATE;
+
+  // -------------------------------------------------------------------------
+  // 3. HELPER: REALISTIC STREAM ALGORITHM
+  // -------------------------------------------------------------------------
+  // Defines how media performs based on real-world factors.
+  auto CalculatePerformance =
+      [&](double quality, double hype, double price, double lifeTime,
+          const std::string &genre,
+          bool isAlbum) -> std::tuple<int, int, double> {
+    // A. Market Trend Impact (The "Zeitgeist" Factor)
+    // If trending, acts as a multiplier on DISCOVERY, not just cash.
+    double trendBonus = 1.0;
+    if (genre == trendingGenre) {
+      trendBonus = 1.0 + trendMultiplier; // e.g., 1.5x to 3.0x visibility
+    }
+
+    // B. The "Freshness" Curve (Exponential Decay)
+    // New releases spike hard, then stabilize.
+    // Albums stay fresh longer (decay divisor 200.0 vs 120.0).
+    double decaySpeed = isAlbum ? 200.0 : 120.0;
+    // Quality slows down decay (Great songs stay relevant).
+    double qualityPreservation = std::max(1.0, quality / 20.0);
+    double ageFactor =
+        std::exp(-(lifeTime / (decaySpeed * qualityPreservation)));
+
+    // C. Price Elasticity (Demand Curve)
+    // People tolerate high prices for High Quality/Hype, but punish it for low
+    // quality.
+    double recommendedPrice = GetRecommendedPrice(quality, isAlbum);
+    double priceRatio = price / std::max(0.01, recommendedPrice);
+    // If price is too high (>1.5x fair), demand creates a cliff drop.
+    double demandMod =
+        (priceRatio > 1.5)
+            ? std::pow(priceRatio, -3.0)
+            : std::pow(priceRatio, -EconomyConfig::PRICE_ELASTICITY);
+
+    // D. Listener Logic (The Core Simulation)
+
+    // 1. Fan Reach: Not all fans see the content.
+    // Higher reputation = higher reach.
+    double reachPercent = std::clamp(player.reputation / 1000.0, 0.05, 0.40);
+    double activeFanListeners = player.fans * reachPercent * hype;
+
+    // 2. Organic Discovery (Viral Potential)
+    // Non-linear: 90 quality is 4x better than 45, not 2x.
+    double qualityPower = std::pow(quality / 10.0, 2.5);
+    double viralBase = Random::Normal(isAlbum ? 150.0 : 50.0, 15.0);
+    double organicListeners =
+        viralBase * qualityPower * trendBonus * ageFactor * hype;
+
+    // Total Daily Streams
+    double totalListeners = activeFanListeners + organicListeners;
+
+    // Reputation Multiplier (Global fame boost)
+    double repBoost =
+        1.0 + (std::log10(std::max(1.0, player.reputation)) * 0.1);
+
+    int streams = static_cast<int>(totalListeners * demandMod * repBoost);
+
+    // Determine "Guaranteed" streams (The long tail)
+    // Even dead songs get 1-5 streams a day if they are in the catalog.
+    if (streams < 5 && lifeTime > 0)
+      streams = Random::Int(0, 2);
+
+    // E. Sales Conversion (The Funnel)
+    // Harder to sell than stream. Requires high engagement (Hype + Quality).
+    double baseConversion = isAlbum ? (1.0 / 1000.0) : (1.0 / 600.0);
+    double salesChance = baseConversion * (quality / 50.0) * demandMod;
+
+    // Binomial distribution approximation for sales
+    int sales = 0;
+    if (streams > 0) {
+      // Simple optimization for large numbers
+      sales = static_cast<int>(streams * salesChance);
+    }
+
+    // F. Decay Calculation (Next Day's Hype)
+    // Hype decays naturally, but sales/streams regenerate it slightly (Word of
+    // Mouth).
+    double naturalDecay = (quality > 85.0) ? 0.995 : 0.97;
+    double tractionRestoration = (streams > 1000) ? 0.005 : 0.0;
+    double nextHype = hype * (naturalDecay + tractionRestoration);
+
+    return {streams, sales, nextHype};
+  };
+
+  // -------------------------------------------------------------------------
+  // 4. EXECUTE SIMULATION (Songs)
+  // -------------------------------------------------------------------------
+  for (auto &song : songs) {
+    if (song.hype <= 0.001f) {
+      song.dailyStreams = 0;
+      continue; // Dead song
+    }
+
+    auto [streams, sales, nextHype] = CalculatePerformance(
+        song.quality, song.hype, song.price, song.lifeTime, song.genre, false);
+
+    // Apply Financials
+    double revenue =
+        (streams * EconomyConfig::STREAM_PAYOUT_RATE) + (sales * song.price);
+    player.money += revenue;
+
+    // Apply Stats
+    song.dailyStreams = streams;
+    song.totalStreams += streams;
+    song.totalSales += sales;
+    song.earnings += revenue;
+    song.hype = std::clamp(nextHype, 0.0, 10.0); // Soft cap hype
+
+    // Feedback Loop: Good performance grows fans
+    UpdateFanbase(player, streams, song.quality, song.hype);
+  }
+
+  // -------------------------------------------------------------------------
+  // 5. EXECUTE SIMULATION (Albums)
+  // -------------------------------------------------------------------------
+  for (auto &album : albums) {
+    if (album.hype <= 0.001f) {
+      album.dailyStreams = 0;
+      continue;
+    }
+
+    auto [streams, sales, nextHype] = CalculatePerformance(
+        album.quality, album.hype, album.price, album.lifeTime, "Album", true);
+
+    double revenue =
+        (streams * EconomyConfig::STREAM_PAYOUT_RATE) + (sales * album.price);
+    player.money += revenue;
+
+    album.dailyStreams = streams;
+    album.totalStreams += streams;
+    album.totalSales += sales;
+    album.earnings += revenue;
+    album.hype = std::clamp(nextHype, 0.0, 10.0);
+
+    // Albums have a stronger effect on fanbase retention than singles
+    UpdateFanbase(player, streams, album.quality, album.hype);
+  }
+
+  // -------------------------------------------------------------------------
+  // 6. REALISTIC PLAYER CHURN & SCANDALS
+  // -------------------------------------------------------------------------
+
+  // A. Natural Churn (Boredom)
+  // The bigger you are, the harder it is to keep everyone.
+  // Small artists (0-10k) lose almost no one. Massive stars lose 0.1% daily.
+  double churnRate = 0.0;
+  if (player.fans > 100000)
+    churnRate = 0.0005;
+  else if (player.fans > 10000)
+    churnRate = 0.0002;
+
+  // B. Inactivity Penalty
+  // If user has no active songs (total streams low), churn increases.
+  // We calculate total active streams for today first.
+  long totalDailyStreams = 0;
+  for (const auto &s : songs)
+    totalDailyStreams += s.dailyStreams;
+
+  if (totalDailyStreams < 100 && player.fans > 500) {
+    churnRate *= 2.0; // Fans leave if you are silent
+  }
+
+  int lostFans = static_cast<int>(player.fans * churnRate);
+
+  // C. Scandal Event (Random Bad Luck)
+  // Realism: Scandals are rare (0.1% chance per day), but impactful.
+  if (player.fans > 1000 && Random::Chance(0.001)) {
+    int scandalLoss =
+        static_cast<int>(player.fans * Random::Double(0.02, 0.05));
+    lostFans += scandalLoss;
+    gameLog.Add("SCANDAL: Bad press caused " + std::to_string(scandalLoss) +
+                " fans to leave!");
+  }
+
+  player.fans = std::max(0, player.fans - lostFans);
 }
