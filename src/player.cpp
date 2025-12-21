@@ -251,6 +251,6 @@ double Player::Busk(double requestedTime) {
 }
 
 double Player::Rest() {
-  Energy += 100.0;
+  Energy = std::min(Energy + 50.0, 100.0);
   return Energy;
 }

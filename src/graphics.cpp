@@ -2,7 +2,6 @@
 #include "../headers/helper.h"
 #include "../headers/simulation.h"
 #include "imgui.h"
-#include "imgui_internal.h"
 #include <cstddef>
 #include <memory>
 
@@ -452,25 +451,115 @@ void DrawMainMenu(GameState &state, Player &player) {
 
   ImGui::End();
 }
-
 void DrawActionsWindow(Player &player) {
+  static float timeBusking = 0.0f;
 
-  static float timeBusking = 0.0;
-  auto SliderSize = ImVec2(35.0f, 150.0f);
+  // 1. Setup Style Variables for this window only (Rounded corners, padding)
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(15, 15));
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10, 10));
 
-  if (ImGui::Begin("Actions")) {
-    ImGui::Text("Possible Actions");
+  // Auto-resize makes the window fit our new layout tightly
+  if (ImGui::Begin("Actions", nullptr)) {
+
+    ImGui::TextDisabled("PLAYER ACTIVITIES");
     ImGui::Separator();
+    ImGui::Spacing();
 
-    if (ImGui::Button("Start Busking")) {
-      player.Busk(timeBusking);
-    }
-    ImGui::SameLine();
-    ImGui::VSliderFloat("Time Busking", SliderSize, &timeBusking, 0.0f, 120.0f);
+    // ==============================
+    // SECTION 1: BUSKING (The Complex Action)
+    // ==============================
 
-    if (ImGui::Button("Rest")) {
-      player.Rest();
+    // Create a visual "Card" for busking using a Child window with a border
+    // Size: 0.0f width (auto), 170.0f height
+    ImGui::BeginChild("BuskingCard", ImVec2(0, 170), true,
+                      ImGuiWindowFlags_None);
+    {
+      ImGui::Text("Perform Music");
+      ImGui::Separator();
+      ImGui::Spacing();
+
+      // Group 1: The Slider (Left side)
+      ImGui::BeginGroup();
+      {
+        // We use "" as the label to hide text inside the slider bars,
+        // and display it manually on the right for a cleaner look.
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab,
+                              ImVec4(0.26f, 0.59f, 0.98f, 1.0f));
+
+        // Note: Logic unchanged, still controlling timeBusking
+        ImGui::VSliderFloat("##timeBusking", ImVec2(40.0f, 110.0f),
+                            &timeBusking, 0.0f, 120.0f, "");
+
+        ImGui::PopStyleColor(2);
+      }
+      ImGui::EndGroup();
+
+      ImGui::SameLine();
+
+      // Group 2: The Controls (Right side)
+      ImGui::BeginGroup();
+      {
+        // Dynamic Label
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Duration:");
+        ImGui::SetWindowFontScale(1.2f); // Make the number pop
+        ImGui::Text("%.1f Minutes", timeBusking);
+        ImGui::SetWindowFontScale(1.0f); // Reset scale
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        // Big Green Action Button
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                              ImVec4(0.3f, 0.7f, 0.3f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive,
+                              ImVec4(0.1f, 0.5f, 0.1f, 1.0f));
+
+        if (ImGui::Button("START BUSKING", ImVec2(140.0f, 40.0f))) {
+          player.Busk(timeBusking);
+        }
+
+        ImGui::PopStyleColor(3);
+      }
+      ImGui::EndGroup();
     }
+    ImGui::EndChild();
+
+    ImGui::Spacing();
+
+    // ==============================
+    // SECTION 2: RESTING (The Simple Action)
+    // ==============================
+
+    // A smaller card for resting
+    ImGui::BeginChild("RestCard", ImVec2(0, 80), true);
+    {
+      ImGui::AlignTextToFramePadding();
+      ImGui::Text("Recover Energy");
+      ImGui::SameLine();
+
+      // Push to the right side
+      float width = ImGui::GetContentRegionAvail().x;
+      ImGui::SameLine(width - 140.0f);
+
+      // Blue Button for Rest
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.7f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                            ImVec4(0.3f, 0.5f, 0.8f, 1.0f));
+
+      if (ImGui::Button("REST NOW", ImVec2(140.0f, 40.0f))) {
+        player.Rest();
+      }
+
+      ImGui::PopStyleColor(2);
+    }
+    ImGui::EndChild();
   }
+
   ImGui::End();
+
+  // Pop the window styles we pushed at the start
+  ImGui::PopStyleVar(3);
 }
