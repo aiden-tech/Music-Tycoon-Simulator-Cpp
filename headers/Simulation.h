@@ -9,7 +9,8 @@
 void UpdateFanbase(Player &player, int streams, double songQuality,
                    double hype);
 
-std::pair<float, std::string> GetMarketTrend(std::shared_ptr<float> tickTimer);
+std::pair<float, std::string_view>
+GetMarketTrend(std::shared_ptr<float> tickTimer);
 
 bool UpdateReputation(Player &player, const std::vector<Song> &songs,
                       const std::vector<Album> &albums,

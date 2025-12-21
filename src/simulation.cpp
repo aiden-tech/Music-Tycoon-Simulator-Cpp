@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <random>
 #include <string>
 
 // --- CORE SIMULATION LOGIC ---
@@ -124,53 +125,74 @@ bool UpdateReputation(Player &player, const std::vector<Song> &songs,
   return false; // No update this frame
 }
 
-std::pair<float, std::string> GetMarketTrend(std::shared_ptr<float> tickTimer) {
+std::pair<float, std::string_view>
+GetMarketTrend(std::shared_ptr<float> tickTimer) {
   // 1. Safety check
-  if (!tickTimer)
+  if (!tickTimer) {
     return {1.0f, "Neutral"};
+  }
 
   // 2. Persistent State
   static bool initialized = false;
   static float currentMultiplier = 1.0f;
-  static std::string currentGenre = "Pop";
+  static size_t currentGenreIndex =
+      0; // Store index, faster than string comparison
+
+  // Static constant data
   static const std::vector<std::string> genres = {
       "Pop", "Rock", "Hip-Hop", "R&B", "Jazz", "Classical", "Other"};
 
-  const float TREND_DURATION = 45.0f;
+  // Modern Random Number Generation (Standard C++)
+  // Initialized once (static)
+  static std::mt19937 gen(std::random_device{}());
+
+  constexpr float TREND_DURATION = 45.0f;
+
+  // Helper lambda to pick a new multiplier
+  auto PickMultiplier = [&]() -> float {
+    // NOTE: Your original code used Normal(0.5, 0.1).
+    // This results in a value around 0.5. If this is a "Bonus",
+    // usually you want values > 1.0.
+    // If you intended a nerf, keep it as is.
+    // Below preserves your exact original logic:
+    return std::max(0.1f, (float)Random::Normal(0.5, 0.1));
+  };
 
   // 3. First Run Initialization
-  // Immediately pick a trend so we don't wait 45s for the first event
   if (!initialized) {
-    currentGenre = genres[rand() % genres.size()];
-    currentMultiplier = std::max(0.1f, (float)Random::Normal(0.5, 0.1));
+    std::uniform_int_distribution<size_t> dist(0, genres.size() - 1);
+    currentGenreIndex = dist(gen);
+    currentMultiplier = PickMultiplier();
     initialized = true;
   }
 
   // 4. Update Logic
   if (*tickTimer >= TREND_DURATION) {
-    // Soft Reset: Subtract duration to preserve 'overshoot' time (prevents time
-    // drift)
+    // Soft Reset: Preserve overshoot to maintain time accuracy
     *tickTimer -= TREND_DURATION;
 
-    // Pick a NEW genre (ensure it is different from the previous one)
-    std::string newGenre = currentGenre;
-    while (newGenre == currentGenre) {
-      newGenre = genres[rand() % genres.size()];
+    // Pick a NEW genre index (ensure it is different)
+    std::uniform_int_distribution<size_t> dist(0, genres.size() - 1);
+    size_t newIndex = currentGenreIndex;
+
+    while (newIndex == currentGenreIndex) {
+      newIndex = dist(gen);
     }
-    currentGenre = newGenre;
+    currentGenreIndex = newIndex;
 
-    // Pick new multiplier (Clamp to ensure it's never negative)
-    currentMultiplier = std::max(0.1f, (float)Random::Normal(0.5, 0.1));
+    // Pick new multiplier
+    currentMultiplier = PickMultiplier();
 
-    // Format the log message nicely
-    std::stringstream ss;
-    ss << "Market Shift! Trending: " << currentGenre << " (+" << std::fixed
-       << std::setprecision(2) << currentMultiplier << "x bonus)";
+    // C++20 std::format - cleaner and faster than stringstream
+    std::string logMsg =
+        std::format("Market Shift! Trending: {} (+{:.2f}x bonus)",
+                    genres[currentGenreIndex], currentMultiplier);
 
-    gameLog.Add(ss.str());
+    gameLog.Add(logMsg);
   }
 
-  return {currentMultiplier, currentGenre};
+  // Return string_view (no copy) + current value
+  return {currentMultiplier, genres[currentGenreIndex]};
 }
 
 void SimulateEconomy(std::vector<Song> &songs, std::vector<Album> &albums,

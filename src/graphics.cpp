@@ -14,26 +14,47 @@ void EventLog::Add(const std::string &message) {
     logs.pop_back();
 }
 
-void EventLog::DrawWindow(sf::Time dt, std::shared_ptr<float> tickTimer) {
-  // We NO LONGER increment the timer here.
-  // The Simulation should be the one "driving" the clock.
+void EventLog::DrawWindow([[maybe_unused]] sf::Time dt,
+                          std::shared_ptr<float> tickTimer) {
+  // Note: 'dt' is marked [[maybe_unused]] to prevent compiler warnings
+  // since the simulation logic handles the time accumulation elsewhere.
 
   if (ImGui::Begin("News Feed")) {
-    // Get existing trend (doesn't trigger change unless Simulation missed it)
+    // 1. Get Market Data (Uses C++20 structured binding)
     auto [trendMultiplier, trendingGenre] = GetMarketTrend(tickTimer);
 
+    // 2. Header Section
+    // Use TextColored for the alert label
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "MARKET ALERT:");
-    ImGui::SameLine();
-    ImGui::Text("Current Trend: %s", trendingGenre.c_str());
-    ImGui::Text("Impact Multiplier: %.2fx", trendMultiplier);
 
+    ImGui::SameLine();
+
+    // FIX: string_view does not have .c_str().
+    // Use "%.*s" with size and data to print string_view safely in ImGui.
+    ImGui::Text("Current Trend: %.*s", static_cast<int>(trendingGenre.size()),
+                trendingGenre.data());
+
+    ImGui::Text("Impact Multiplier: %.2fx", trendMultiplier);
     ImGui::Separator();
-    ImGui::BeginChild("LogScroll"); // Added scroll area for news
-    for (const auto &log : logs) {
-      ImGui::TextWrapped("%s", log.c_str());
-      ImGui::Separator();
+
+    // 3. Scrollable Log Area
+    // FIX: Pass ImVec2(0,0) to make the child window fill the remaining space.
+    // FIX: Pass true (or ImGuiChildFlags_Border) to visualize the logging area.
+    if (ImGui::BeginChild("LogScroll", ImVec2(0.0f, 0.0f), true)) {
+
+      // Iterate continuously through logs
+      for (const auto &log : logs) {
+        ImGui::TextWrapped("%s", log.c_str());
+        ImGui::Separator();
+      }
+
+      // OPTIONAL: Auto-scroll to bottom behavior
+      // If you want the window to stick to the bottom when new logs arrive:
+      // if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+      //     ImGui::SetScrollHereY(1.0f);
+
+      ImGui::EndChild();
     }
-    ImGui::EndChild();
   }
   ImGui::End();
 }
@@ -359,23 +380,47 @@ void DrawAnalyticsWindow(const std::vector<Song> &songsReleased,
   ImGui::End();
 }
 
+#include <cstring> // For strcmp if needed, though we use string_view
+#include <imgui.h>
+#include <string>
+#include <string_view>
+#include <utility> // For std::pair
+#include <vector>
+
+// Assuming GameLog and Player are defined elsewhere as per your snippet
+// extern GameLog gameLog;
+
 void DrawUpgradeWindow(const char *title, Player &player,
                        std::vector<std::pair<std::string, double>> &items) {
 
-  bool IsSkillWindow = (strcmp(title, "Skills") == 0);
+  // C++20: Use string_view for efficient comparison
+  bool IsSkillWindow = (std::string_view(title) == "Skills");
 
   if (ImGui::Begin(title)) {
     ImGui::Text("Funds: $%.2f", player.money);
     ImGui::Separator();
 
+    // C++20: Structured binding for cleaner loop access
     for (size_t i = 0; i < items.size(); ++i) {
-      auto &item = items[i];
+      auto &[name, level] = items[i];
+
       ImGui::PushID((int)i);
 
-      ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%s (Lvl %.1f)",
-                         item.first.c_str(), item.second);
+      // IMPROVEMENT: Vertically align text to the buttons that follow
+      ImGui::AlignTextToFramePadding();
 
-      auto UpgradeButton = [&](const char *label, double cost, double gain) {
+      // Draw the Item Name and Level
+      ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%s (Lvl %.1f)",
+                         name.c_str(), level);
+
+      // FIX: This moves the cursor back up to the line of the text
+      // so the buttons appear on the side, not below.
+      ImGui::SameLine();
+
+      // ---------------------------------------------------------
+      // Upgrade Button Lambda
+      // ---------------------------------------------------------
+      auto DrawUpgradeBtn = [&](const char *label, double cost, double gain) {
         bool cannotAfford = (player.money < cost);
 
         if (cannotAfford)
@@ -383,9 +428,10 @@ void DrawUpgradeWindow(const char *title, Player &player,
 
         if (ImGui::Button(label)) {
           player.money -= cost;
-          item.second += gain;
+          level += gain;
+
           if (IsSkillWindow) {
-            gameLog.Add("Learned " + item.first);
+            gameLog.Add("Learned " + name);
           } else {
             gameLog.Add("Upgraded");
           }
@@ -393,26 +439,39 @@ void DrawUpgradeWindow(const char *title, Player &player,
 
         if (cannotAfford)
           ImGui::EndDisabled();
-
-        ImGui::SameLine();
       };
 
-      // Free study
+      // ---------------------------------------------------------
+      // Button Logic
+      // ---------------------------------------------------------
+
+      // 1. First Button (Free Study or Minor Upgrade)
       if (IsSkillWindow) {
         if (ImGui::Button("Study (Free)")) {
-          item.second += 0.1;
+          level += 0.1;
         }
       } else {
-        UpgradeButton("Minor Upgrade", 10.0, 1.0);
+        DrawUpgradeBtn("Minor Upgrade", 10.0, 1.0);
       }
+
       ImGui::SameLine();
+
+      // 2. Second Button (Course or Average)
       if (IsSkillWindow) {
-        UpgradeButton("Course ($50)", 50.0, 1.0);
-        UpgradeButton("Mentor ($250)", 250.0, 2.5);
+        DrawUpgradeBtn("Course ($50)", 50.0, 1.0);
       } else {
-        UpgradeButton("Average Upgrade ($100)", 100.0, 2.0);
-        UpgradeButton("Major Upgrade ($500)", 500.0, 3.5);
+        DrawUpgradeBtn("Average Upgrade ($100)", 100.0, 2.0);
       }
+
+      ImGui::SameLine();
+
+      // 3. Third Button (Mentor or Major)
+      if (IsSkillWindow) {
+        DrawUpgradeBtn("Mentor ($250)", 250.0, 2.5);
+      } else {
+        DrawUpgradeBtn("Major Upgrade ($500)", 500.0, 3.5);
+      }
+
       ImGui::PopID();
     }
 
