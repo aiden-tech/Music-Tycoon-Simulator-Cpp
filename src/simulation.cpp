@@ -57,11 +57,12 @@ void UpdateFanbase(Player &player, int streams, double songQuality,
   // --- E. Churn (Losing Fans) ---
   // You always lose a tiny bit of fans (people lose interest).
   // Low quality releases accelerate this.
-  double churnRate = 0.0001; // 0.01% natural daily churn
+  double churnRate =
+      0.0001 / player.reputation; // 0.01% natural daily churn / rep factor
   if (songQuality < 40.0)
-    churnRate += 0.005; // 0.5% penalty for bad songs
+    churnRate += 0.005 / player.reputation; // 0.5% penalty for bad songs
   if (hype < 0.1)
-    churnRate += 0.001; // Penalty for being inactive
+    churnRate += 0.001 / player.reputation; // Penalty for being inactive
 
   int lostFans = static_cast<int>(player.fans * churnRate);
 
@@ -240,9 +241,11 @@ void SimulateEconomy(std::vector<Song> &songs, std::vector<Album> &albums,
       double fanReach = player.fans * 0.05;
       double potentialListeners = (baseDiscovery + fanReach) * song.hype;
       double retention = std::clamp(song.quality / 10.0, 0.1, 1.2);
+      double repMultiplier = Random::Double(0.0, player.reputation) / 100.0;
 
-      int actualStreams = static_cast<int>(potentialListeners * retention *
-                                           demandMultiplier * activeBonus);
+      int actualStreams =
+          static_cast<int>(potentialListeners * retention * demandMultiplier *
+                           activeBonus * repMultiplier);
 
       // Sales
       double saleProb =
