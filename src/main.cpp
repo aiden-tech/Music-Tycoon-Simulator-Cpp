@@ -29,7 +29,7 @@ int main() {
   // 2. CREATE TIMER (Before the loop)
   auto globalTickTimer = std::make_shared<float>(0.0f);
 
-  Player player("The Architect");
+  Player player("name");
   std::vector<Song> songsMade;
   std::vector<Song> songsReleased;
   std::vector<Album> albumsReleased;

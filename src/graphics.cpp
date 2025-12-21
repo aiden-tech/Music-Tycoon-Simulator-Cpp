@@ -4,6 +4,7 @@
 #include "imgui.h"
 #include <cstddef>
 #include <memory>
+#include <string>
 
 EventLog gameLog;
 
@@ -448,6 +449,8 @@ void DrawMainMenu(GameState &state, Player &player) {
   if (ImGui::Button("QUIT", ImVec2(-1, 30))) {
     exit(0);
   }
+
+  player.name = nameBuf;
 
   ImGui::End();
 }
